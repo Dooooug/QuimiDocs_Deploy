@@ -1,17 +1,14 @@
+// src/index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+import AppRoutes from './routes/AppRoutes'; // Importe seu AppRoutes
+import './styles/global.css'; // Crie este arquivo para estilos globais/reset
+// import './index.css'; // Opcional, pode ser mesclado com global.css
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <AppRoutes /> {/* Renderize seu componente de rotas principal */}
   </React.StrictMode>
 );
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();

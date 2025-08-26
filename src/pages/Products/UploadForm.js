@@ -1,7 +1,7 @@
 // src/pages/Products/UploadForm.js
 import React, { useState } from 'react';
-import '../../styles/popup.css'; 
-import api from '../../services/api'; 
+import '../../styles/popup.css';
+import api from '../../services/api';
 import PopupMessage from '../../components/Common/PopupMessage';
 
 function UploadForm({ productId, productNameForFispq, show, onClose, onUploadComplete }) {
@@ -9,6 +9,7 @@ function UploadForm({ productId, productNameForFispq, show, onClose, onUploadCom
   const [uploadMessage, setUploadMessage] = useState('');
   const [showUploadMessage, setShowUploadMessage] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState(null);
 
   if (!show) {
     return null;
@@ -16,9 +17,11 @@ function UploadForm({ productId, productNameForFispq, show, onClose, onUploadCom
 
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]);
+    setUploadedFileName(null);
   };
 
   const handleUpload = async () => {
+    // Lógica de upload...
     if (!selectedFile) {
       setUploadMessage('Por favor, selecione um arquivo.');
       setShowUploadMessage(true);
@@ -27,6 +30,21 @@ function UploadForm({ productId, productNameForFispq, show, onClose, onUploadCom
 
     if (!productNameForFispq) {
       setUploadMessage('Nome do produto não fornecido. Não é possível anexar FDS.');
+      setShowUploadMessage(true);
+      return;
+    }
+
+    if (selectedFile.type !== 'application/pdf') {
+      setUploadMessage('O arquivo deve estar no formato PDF.');
+      setShowUploadMessage(true);
+      return;
+    }
+
+    const fileNameWithoutExt = selectedFile.name.replace(/\.[^/.]+$/, "").toLowerCase().trim();
+    const productNameNormalized = productNameForFispq.toLowerCase().trim();
+
+    if (fileNameWithoutExt !== productNameNormalized) {
+      setUploadMessage(`O nome do arquivo deve ser exatamente igual ao nome do produto: "${productNameForFispq}".`);
       setShowUploadMessage(true);
       return;
     }
@@ -40,23 +58,20 @@ function UploadForm({ productId, productNameForFispq, show, onClose, onUploadCom
     formData.append('product_name', productNameForFispq);
 
     try {
-      const response = await api.post('/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const res = await api.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+
+      onUploadComplete(res.data.url, res.data.s3_file_key);
 
       setUploadMessage('FDS anexado com sucesso!');
       setShowUploadMessage(true);
-      // **CORREÇÃO:** Acessa as propriedades diretamente do objeto de resposta.
-      onUploadComplete(response.url, response.s3_file_key); 
-      
+      setUploadedFileName(selectedFile.name);
       setSelectedFile(null);
 
     } catch (error) {
       console.error('Erro ao enviar FDS:', error);
-      // **CORREÇÃO:** Acessa a propriedade 'error' diretamente do objeto de erro.
-      const errorMessage = error.response?.error || 'Erro ao anexar FDS.';
+      const errorMessage = error.response?.data?.error || 'Erro ao anexar FDS.';
       setUploadMessage(errorMessage);
       setShowUploadMessage(true);
     } finally {
@@ -65,23 +80,37 @@ function UploadForm({ productId, productNameForFispq, show, onClose, onUploadCom
   };
 
   return (
-    <div className="popup-overlay">
-      <div className="popup-message active" style={{ display: 'block', maxWidth: '500px', margin: 'auto', top: '50%', transform: 'translateY(-50%)' }}>
-        <h3>Anexar FDS para o Produto: {productNameForFispq || productId}</h3>
-        <input type="file" onChange={handleFileChange} />
-        <button onClick={handleUpload} disabled={uploading}>
-          {uploading ? 'Enviando...' : 'Anexar'}
-        </button>
-        <button onClick={onClose} className="popup-close-button">&times;</button>
-        {showUploadMessage && (
-          <PopupMessage
-            message={uploadMessage}
-            onClose={() => setShowUploadMessage(false)}
-            type={uploadMessage.includes('sucesso') ? 'success' : 'error'}
-          />
-        )}
+    <>
+      <div className="popup-overlay">
+        <div className="popup-message">
+          <button onClick={onClose} className="popup-close-button">
+            &times;
+          </button>
+          
+          <h3>Anexar FDS para o Produto: {productNameForFispq || productId}</h3>
+
+          <input type="file" accept="application/pdf" onChange={handleFileChange} />
+
+          <button onClick={handleUpload} disabled={uploading}>
+            {uploading ? 'Enviando...' : 'Anexar'}
+          </button>
+
+          {uploadedFileName && (
+            <p style={{ marginTop: '10px', color: 'green' }}>
+              ✅ Arquivo anexado: <strong>{uploadedFileName}</strong>
+            </p>
+          )}
+
+        </div>
       </div>
-    </div>
+      {showUploadMessage && (
+        <PopupMessage
+          message={uploadMessage}
+          onClose={() => setShowUploadMessage(false)}
+          type={uploadMessage.includes('sucesso') ? 'success' : 'error'}
+        />
+      )}
+    </>
   );
 }
 

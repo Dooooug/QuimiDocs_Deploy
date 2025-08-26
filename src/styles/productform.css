@@ -6,8 +6,8 @@ body {
   padding: 0;
 }
 
-/* 📦 Container de conteúdo */
-.content, .content-account {
+/* 📦 Container */
+.content {
   margin-left: 20px;
   padding: 20px;
   background-color: #ffffff;
@@ -17,63 +17,14 @@ body {
   margin-top: 70px;
 }
 
-/* 🧾 Lista de produtos */
-.product-list {
-  padding: 0;
-  background-color: #f4f4f4;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.product-list h2,
+/* 🧾 Lista / Formulário */
 .product-form h2 {
   color: #1e90ff;
-  margin: 0 0 20px;
+  margin-bottom: 20px;
   text-align: center;
 }
 
-.product-list table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 15px;
-  background-color: white;
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.product-list th,
-.product-list td {
-  padding: 12px 15px;
-  text-align: left;
-  border-bottom: 1px solid #ddd;
-}
-
-.product-list th {
-  background-color: #1e90ff;
-  color: white;
-  font-weight: bold;
-  text-transform: uppercase;
-  font-size: 0.9em;
-}
-
-.product-list tbody tr:nth-child(even) {
-  background-color: #f9f9f9;
-}
-
-.product-list tbody tr:hover {
-  background-color: #e0f7fa;
-  transition: background-color 0.3s ease;
-}
-
-.product-list p {
-  color: #777;
-  font-style: italic;
-}
-
-/* 🧩 Card de formulário */
 .card {
-  border: none;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 24px;
@@ -82,117 +33,34 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  max-width: 900px;
+  max-width: 1200px;
   margin-inline: auto;
 }
 
-/* 🏷️ Labels e inputs */
+/* 🏷️ Inputs */
 label {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 10px;
   color: #2d3436;
   font-size: 0.9em;
   font-weight: bold;
+  
 }
-
 input[type="text"], select {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #dfe6e9;
   border-radius: 6px;
   font-size: 0.95em;
-  box-sizing: border-box;
   transition: border-color 0.3s ease;
+  gap:10px;
 }
-
 input[type="text"]:focus, select:focus {
   border-color: #1e90ff;
   outline: none;
 }
 
-/* 🧪 GHS */
-.ghs-section .checkbox-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.ghs-section .checkbox-group input[type="checkbox"] {
-  margin-right: 5px;
-}
-
-.ghs-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.ghs-card h2 {
-  text-align: center;
-  margin-bottom: 15px;
-}
-
-.ghs-container-horizontal {
-  display: flex;
-  gap: 180px;
-  width: 100%;
-  justify-content: center;
-  margin-bottom: 15px;
-}
-
-.ghs-group-horizontal label {
-  display: block;
-  font-weight: bold;
-  margin-bottom: 5px;
-  text-align: center;
-}
-
-.ghs-group-horizontal div {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-/* 🔻 Campos inferiores GHS */
-.ghs-bottom-fields {
-  display: flex;
-  gap: 20px;
-  width: 100%;
-  box-sizing: border-box;
-  margin-bottom: 10px;
-}
-
-.ghs-bottom-fields label {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.ghs-bottom-fields label input[type="text"] {
-  width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  box-sizing: border-box;
-}
-
-/* 🖼️ Imagens */
-.image-with-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.image-with-text img {
-  margin-bottom: 5px;
-  max-width: 100%;
-  height: auto;
-}
-
-/* 🧪 Seção de substâncias com botão aprimorado */
+/* 🧪 Substâncias */
 .substance-form {
   display: flex;
   flex-direction: column;
@@ -201,108 +69,165 @@ input[type="text"]:focus, select:focus {
   padding: 24px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  max-width: 600px;
+  max-width: 1200px;
   margin: 0 auto;
 }
+.substance-fields {
+  display: grid;
+  gap: 15px;
+}
+.add-substance-btn {
+  background-color: #1e90ff;
+  color: white;
+  width: 25px;
+  padding: 0px 3px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 60;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.5em;
+}
+.remove-substance-btn {
+  background-color: #ff1e1e;
+  color: white;
+  width: 25px;
+  padding: 0px 3px;
+  border: none;
+  border: none;
+  border-radius: 8px;
+  font-weight: 60;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1.5em;
+}
+.add-substance-btn:hover {
+  background-color: #0d6efd;
+}
 
-.substance-form h2 {
-  color: #1e90ff;
+/* Título centralizado */
+.ghs-header {
+  width: 100%;
   text-align: center;
+  margin-top: 20px;
   margin-bottom: 10px;
 }
 
-.substance-fields {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 15px;
+.ghs-header h2 {
+  font-size: 24px;
+  color: #1e90ff;
+  margin: 0;
+}
+.ghs-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 🔥 centraliza tudo horizontalmente */
+  width: 100%;
 }
 
-.substance-fields input[type="text"] {
-  padding: 10px 12px;
-  border: 1px solid #dfe6e9;
-  border-radius: 6px;
-  font-size: 0.95em;
-  box-sizing: border-box;
-  transition: border-color 0.3s ease;
+/* Container geral */
+.ghs-container-horizontal {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 🔥 centraliza os grupos */
+  gap: 40px;
+  margin-top: 20px;
+  padding: 0 20px;
 }
 
-.substance-fields input[type="text"]:focus {
-  border-color: #1e90ff;
-  outline: none;
+/* Cada grupo */
+.ghs-group-horizontal {
+  width: 100%;
+  max-width: 800px;
+  text-align: center;
 }
 
-/* ✨ Botão de adicionar substância com ícone e destaque */
-.add-substance-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background-color: #1e90ff;
-  color: white;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1em;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease, transform 0.2s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.add-substance-btn::before {
-  content: "+";
-  font-size: 1.2em;
+/* Título do grupo */
+.ghs-group-horizontal label {
+  display: block;
   font-weight: bold;
+  font-size: 1.1em;
+  margin-bottom: 15px;
+  color: #333;
 }
 
-.add-substance-btn:hover {
-  background-color: #0d6efd;
-  transform: scale(1.05);
+/* Grupo de imagens */
+.image-checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
 }
 
-/* 📱 Responsividade */
+/* Cada imagem com texto */
+.image-with-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100px;
+  text-align: center;
+}
+
+.image-checkbox-group input[type="checkbox"] {
+  display: none;
+}
+
+.image-checkbox-group input[type="checkbox"]:checked + .image-with-text {
+  border-color: #1e90ff;
+  background-color: #e6f0ff;
+}
+
+.image-with-text span {
+  font-size: 0.8em;
+  margin-top: 5px;
+  color: #333;
+}
+
+
+/* 🔻 Campos inferiores GHS */
+.ghs-bottom-fields {
+  display: flex;
+  gap: 20px;
+  width: 100%;
+  margin-top: 20px;
+}
+.ghs-bottom-fields label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 📤 Botões */
+.submit-button {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.fispq-button {
+  background-color: #6366f1;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 6px;
+}
+.fispq-button:hover { background-color: #4f46e5; }
+button[type="submit"] {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+}
+button[type="submit"]:hover { background-color: #059669; }
+
+
+/* 📱 Responsivo */
 @media (max-width: 900px) {
-  .card {
-    grid-template-columns: 1fr;
-    padding: 16px;
-  }
-
-  .ghs-container-horizontal {
-    flex-direction: column;
-    gap: 30px;
-  }
-
-  .substance-fields {
-    flex-direction: column;
-    align-items: stretch;
-  }
-}
-
-@media (max-width: 600px) {
-  .ghs-group-horizontal div {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .ghs-group-horizontal .checkbox-group {
-    grid-template-columns: repeat(2, 1fr);
-    display: grid;
-    gap: 15px;
-  }
-
-  .ghs-bottom-fields {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  button[type="submit"], button[type="button"],
-  .add-substance-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .substance-fields {
-    flex-direction: column;
-    gap: 10px;
-  }
+  .card { grid-template-columns: 1fr; }
+  .ghs-container-horizontal { flex-direction: column; }
 }

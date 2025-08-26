@@ -128,82 +128,112 @@ const ProductRegistrationPage = () => {
     setShowUpload(false); 
   };
 
-  // Envio do formulário
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage('');
-    setShowMessage(false);
+// Envio do formulário
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setMessage('');
+  setShowMessage(false);
 
-    // Permissão
-    if (!user || (user.role !== ROLES.ADMIN && user.role !== ROLES.ANALYST)) {
-      setMessage('Ação não permitida para o seu nível de acesso.');
-      setShowMessage(true);
-      setLoading(false);
-      return;
-    }
+  if (!user || (user.role !== ROLES.ADMIN && user.role !== ROLES.ANALYST)) {
+    setMessage('Ação não permitida para o seu nível de acesso.');
+    setShowMessage(true);
+    setLoading(false);
+    return;
+  }
 
-    // Validação alinhada ao backend
-    if (
-      !product.nome_do_produto.trim() ||
-      !product.fornecedor.trim() ||
-      !product.empresa.trim() ||
-      !product.estado_fisico.trim() ||
-      !product.local_de_armazenamento.trim()
-    ) {
-      setMessage('Preencha Nome, Fornecedor, Empresa, Estado Físico e Local de Armazenamento.');
-      setShowMessage(true);
-      setLoading(false);
-      return;
-    }
+  // ⚠️ Validação obrigatória
+  if (
+  !product.nome_do_produto.trim() ||
+  !product.fornecedor.trim() ||
+  !product.empresa.trim() ||
+  !product.estado_fisico.trim() ||
+  !product.local_de_armazenamento.trim() ||
+  (product.perigos_fisicos.length === 0 &&
+    product.perigos_meio_ambiente.length === 0 &&
+    product.perigos_saude.length === 0)
+) {
+    setMessage('Preencha Nome, Fornecedor, Empresa, Estado Físico, Local de Armazenamento , Substância, Número CAS, Concentração(%), Classificação GHS, Palavra de Advertência e Categoria. Não se esqueça que anexar a FDS');
+    setShowMessage(true);
+    setLoading(false);
+    return;
+  }
 
-    const productDataToSend = {
-      ...product,
-      substancias: substancias.filter(
-        s => s.nome.trim() || s.cas.trim() || s.concentracao.trim()
-      ),
-    };
+  // Pelo menos 1 substância COMPLETA
+  const substanciasValidas = substancias.filter(
+    s => s.nome.trim() && s.cas.trim() && s.concentracao.trim()
+  );
+  if (substanciasValidas.length === 0) {
+    setMessage('Adicione pelo menos uma substância com Nome, CAS e Concentração.');
+    setShowMessage(true);
+    setLoading(false);
+    return;
+  }
 
-    try {
-      const response = await productService.createProduct(productDataToSend);
-      setMessage(response.msg || `Produto ${response.product?.codigo} cadastrado com sucesso!`);
-      setShowMessage(true);
+  // Pelo menos 1 classificação GHS
+  if (
+    product.perigos_fisicos.length === 0 &&
+    product.perigos_saude.length === 0 &&
+    product.perigos_meio_ambiente.length === 0
+  ) {
+    setMessage('Selecione pelo menos uma classificação GHS.');
+    setShowMessage(true);
+    setLoading(false);
+    return;
+  }
 
-      // Reset form
-      setProduct({
-        qtade_maxima_armazenada: '',
-        nome_do_produto: '',
-        fornecedor: '',
-        estado_fisico: '',
-        local_de_armazenamento: '',
-        empresa: '',
-        perigos_fisicos: [],
-        perigos_saude: [],
-        perigos_meio_ambiente: [],
-        palavra_de_perigo: '',
-        categoria: '',
-        pdf_url: '',
-        pdf_s3_key: ''
-      });
-      setSubstancias([{ nome: '', cas: '', concentracao: '' }]);
+  // Não permitir sem FDS
+  if (!product.pdf_url || !product.pdf_s3_key) {
+    setMessage('É obrigatório anexar uma FDS antes de salvar o produto.');
+    setShowMessage(true);
+    setLoading(false);
+    return;
+  }
 
-      console.log("✅ Produto criado:", response.product);
-
-    } catch (error) {
-      console.error('Erro ao adicionar produto:', error);
-      const errorMessage = error.response?.data?.msg || 'Erro ao adicionar produto.';
-      setMessage(errorMessage);
-      setShowMessage(true);
-
-      if (error.response && error.response.status === 403) {
-        setTimeout(() => {
-          navigate('/app/dashboard');
-        }, 3000);
-      }
-    } finally {
-      setLoading(false);
-    }
+  const productDataToSend = {
+    ...product,
+    substancias: substanciasValidas,
   };
+
+  try {
+    // 1. Criar produto no backend
+    const response = await productService.createProduct(productDataToSend);
+    const newProduct = response.product;
+
+    // 2. Se criou com sucesso, mostrar mensagem
+    setMessage(
+      `✅ Produto cadastrado com sucesso!\nCódigo: ${newProduct.codigo}\nNome: ${newProduct.nome_do_produto}\nFDS anexada: OK`
+    );
+    setShowMessage(true);
+
+    // Reset
+    setProduct({
+      qtade_maxima_armazenada: '',
+      nome_do_produto: '',
+      fornecedor: '',
+      estado_fisico: '',
+      local_de_armazenamento: '',
+      empresa: '',
+      perigos_fisicos: [],
+      perigos_saude: [],
+      perigos_meio_ambiente: [],
+      palavra_de_perigo: '',
+      categoria: '',
+      pdf_url: '',
+      pdf_s3_key: ''
+    });
+    setSubstancias([{ nome: '', cas: '', concentracao: '' }]);
+
+  } catch (error) {
+    console.error('Erro ao adicionar produto:', error);
+    const errorMessage = error.response?.data?.msg || 'Erro ao adicionar produto.';
+    setMessage(errorMessage);
+    setShowMessage(true);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="product-form">
@@ -211,14 +241,17 @@ const ProductRegistrationPage = () => {
       <form onSubmit={handleSubmit}>
         {/* Card dados básicos */}
         <div className="card">
-          <label>
-            Quantidade Máx. Armazenada:
-            <input type="text" name="qtade_maxima_armazenada" value={product.qtade_maxima_armazenada} onChange={handleInputChange}/>
-          </label>
+          
           <label>
             Nome do Produto:
             <input type="text" name="nome_do_produto" value={product.nome_do_produto} onChange={handleInputChange}/>
           </label>
+          
+          <label>
+            Quantidade Máx. Armazenada:
+            <input type="text" name="qtade_maxima_armazenada" value={product.qtade_maxima_armazenada} onChange={handleInputChange}/>
+          </label>
+        
           <label>
             Fornecedor:
             <input type="text" name="fornecedor" value={product.fornecedor} onChange={handleInputChange}/>
@@ -249,22 +282,24 @@ const ProductRegistrationPage = () => {
         </div>
 
         {/* Substâncias */}
-        <div className="card">
+        <div className="substance-form">
           <h2>Substâncias</h2>
           {substancias.map((s, i) => (
-            <div key={i}>
+            <div key={i} className="substance-fields">
               <input type="text" name="nome" placeholder="Substância" value={s.nome} onChange={(e)=>handleSubstanciaChange(i,e)}/>
               <input type="text" name="cas" placeholder="Número CAS" value={s.cas} onChange={(e)=>handleSubstanciaChange(i,e)}/>
               <input type="text" name="concentracao" placeholder="Concentração (%)" value={s.concentracao} onChange={(e)=>handleSubstanciaChange(i,e)}/>
-              {substancias.length > 1 && <button type="button" onClick={()=>handleRemoveSubstancia(i)}>-</button>}
+              {substancias.length > 1 && <button type="button" className="remove-substance-btn"onClick={()=>handleRemoveSubstancia(i)}>-</button>}
             </div>
           ))}
-          <button type="button" onClick={handleAddSubstancia}>+</button>
+          <button type="button" className="add-substance-btn" onClick={handleAddSubstancia}>+</button>
         </div>
 
         
         <div className="card ghs-card">
-          <h2>Classificação GHS</h2>
+          <div className="ghs-header">
+            <h2>Classificação GHS</h2>
+        </div>
           <div className="ghs-container-horizontal">
             <div className="ghs-group-horizontal">
               <label>Perigos Físicos</label>
@@ -304,12 +339,12 @@ const ProductRegistrationPage = () => {
                   <div className="image-with-text"><img src={MorteImg} alt="Toxicidade"/><span>Toxicidade</span></div>
                 </label>
                 <label>
-                  <input type="checkbox" name="perigos_saude" value="Corrosão da Pele" checked={product.perigos_fisicos.includes("Corrosivo")} onChange={handleCheckboxChange}/>
-                  <div className="image-with-text"><img src={corrosivoImg} alt="Gás sob pressão"/><span>Corrosivo</span></div>
+                  <input type="checkbox" name="perigos_saude" value="Corrosão da Pele" checked={product.perigos_saude.includes("Corrosão da Pele")} onChange={handleCheckboxChange}/>
+                  <div className="image-with-text"><img src={corrosivoImg} alt="Corrosão da Pele"/><span>Corrosivo</span></div>
                 </label>
                 <label>
-                  <input type="checkbox" name="perigos_saude" value="Perigo por Respiração" checked={product.perigos_fisicos.includes("Perigo por Respiração")} onChange={handleCheckboxChange}/>
-                  <div className="image-with-text"><img src={cancerImg} alt="Cancer"/><span>Cancer</span></div>
+                  <input type="checkbox" name="perigos_saude" value="Perigo por Respiração" checked={product.perigos_saude.includes("Perigo por Respiração")} onChange={handleCheckboxChange}/>
+                  <div className="image-with-text"><img src={cancerImg} alt="Perigo por Respiração"/><span>Perigo por Respiração</span></div>
                 </label>
               </div>
             </div>

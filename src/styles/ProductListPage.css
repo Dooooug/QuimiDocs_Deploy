@@ -1,0 +1,220 @@
+/* src/styles/ProductTable.css */
+
+.product-list-page {
+    padding: 20px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    margin: 20px auto;
+    max-width: 1200px; /* Ajuste conforme necessário */
+}
+
+.product-list-page h1 {
+    color: #333;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.product-list-page p {
+    color: #666;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.search-and-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap; /* Permite que os itens quebrem a linha em telas menores */
+    gap: 10px; /* Espaçamento entre os itens */
+}
+
+.global-filter-input {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    width: 300px; /* Largura do campo de pesquisa */
+}
+
+.pagination-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin: 0 5px;
+    transition: background-color 0.2s ease;
+}
+
+.pagination-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.pagination-button:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.pagination-info {
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.page-size-select {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    margin-left: 10px;
+}
+
+.table-container {
+    overflow-x: auto; /* Permite scroll horizontal em telas pequenas */
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.product-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #fff;
+}
+
+.product-table th,
+.product-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    white-space: nowrap; /* Impede que o texto quebre para a próxima linha */
+}
+
+.product-table th {
+    background-color: #eef2f7;
+    color: #4a5568;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer; /* Para indicar que é clicável para ordenação */
+}
+
+.product-table th:hover {
+    background-color: #e0e5ed;
+}
+
+.product-table tr:hover {
+    background-color: #f5f5f5;
+}
+
+.product-table a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.product-table a:hover {
+    text-decoration: underline;
+}
+
+.table-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-button,
+.delete-button {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background-color 0.2s ease;
+}
+
+.edit-button {
+    background-color: #28a745;
+    color: white;
+}
+
+.edit-button:hover {
+    background-color: #218838;
+}
+
+.delete-button {
+    background-color: #dc3545;
+    color: white;
+}
+
+.delete-button:hover {
+    background-color: #c82333;
+}
+
+.error-message {
+    color: #dc3545;
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 20px;
+    text-align: center;
+}
+
+.popup-message {
+    /* Estilos do PopupMessage, se ainda não tiver */
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #d4edda;
+    color: #155724;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.popup-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.popup-message button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #155724;
+}
+
+.popup-message.error button {
+    color: #721c24;
+}
+
+/* Estilos para responsividade */
+@media (max-width: 768px) {
+    .product-list-page {
+        margin: 10px;
+        padding: 15px;
+    }
+    .search-and-pagination {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .global-filter-input {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    .pagination-info {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        display: block;
+    }
+    .pagination-button, .page-size-select {
+        margin: 5px 0;
+        width: 100%;
+    }
+}

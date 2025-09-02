@@ -1,0 +1,175 @@
+/* src/styles/Navbar.css */
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #1e90ff;
+  padding: 10px;
+  color: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+  z-index: 100;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-logo-link {
+  display: flex;
+  align-items: center;
+  height: 50px;
+}
+
+.navbar-logo {
+  height: 40px;
+  width: auto;
+  margin-right: 15px;
+}
+
+.welcome-message-navbar {
+  font-size: 1em;
+  font-weight: bold;
+}
+
+.navbar-menu {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-item {
+  position: relative;
+  margin-left: 20px;
+}
+
+.navbar-item button {
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.3s ease;
+  border-radius: 5px;
+}
+
+.navbar-item button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Dropdown */
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-toggle::after {
+  content: '▼';
+  font-size: 0.7em;
+  margin-left: 8px;
+  transition: transform 0.3s ease;
+}
+
+.navbar-item.dropdown .dropdown-toggle.open::after {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: #1e90ff;
+  list-style-type: none;
+  padding: 10px 0;
+  margin: 0;
+  min-width: 200px;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-menu li button {
+  width: 100%;
+  text-align: left;
+  padding: 10px 20px;
+  border-radius: 0;
+}
+
+.dropdown-menu li button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 🔹 Mobile Responsivo */
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .navbar-left {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .welcome-message-navbar {
+    display: none; /* Oculta mensagem de boas-vindas no mobile para economizar espaço */
+  }
+
+  .navbar-menu {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background-color: #1e90ff;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    z-index: 99;
+    padding: 10px 0;
+  }
+
+  .navbar-menu.active {
+    display: flex;
+  }
+
+  .navbar-item {
+    margin: 5px 0;
+    width: 100%;
+  }
+
+  .navbar-item button {
+    width: 100%;
+    text-align: left;
+  }
+
+  .navbar-toggle {
+    display: block;
+    cursor: pointer;
+    font-size: 1.8em;
+    color: white;
+    margin-left: auto;
+  }
+
+  .dropdown-menu {
+    position: static;
+    width: 100%;
+    box-shadow: none;
+    background-color: rgba(30, 144, 255, 0.1);
+    border-radius: 0;
+    padding: 0;
+  }
+
+  .dropdown-menu li button {
+    padding-left: 40px;
+  }
+}

@@ -1,0 +1,39 @@
+/* src/pages/Dashboard/account.css */
+
+.account-container {
+  display: flex; /* Usa flexbox */
+  flex-direction: column; /* Organiza os itens em coluna */
+  align-items: center; /* Centraliza horizontalmente */
+  justify-content: center; /* Centraliza verticalmente (se o container tiver altura definida) */
+  min-height: calc(100vh - 40px); /* Ajusta a altura mínima para centralização, considerando o padding do AppLayout */
+  padding: 20px; /* Padding interno */
+  color: #333;
+  text-align: center; /* Centraliza o texto dentro do container */
+}
+
+.account-container h1 {
+  font-size: 2.8em;
+  margin-bottom: 15px;
+  color: #0f172a;
+}
+
+.account-container p {
+  font-size: 1.2em;
+  color: #334155;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .account-container {
+    min-height: auto; /* Remove a altura mínima em telas pequenas para evitar rolagem desnecessária */
+    padding-top: 0; /* Ajuste se houver cabeçalho fixo no mobile */
+  }
+
+  .account-container h1 {
+    font-size: 2em;
+  }
+
+  .account-container p {
+    font-size: 1em;
+  }
+}

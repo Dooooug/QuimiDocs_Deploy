@@ -1,0 +1,250 @@
+DOCUMENTAÇÃO DE SEGURANÇA IMPLEMENTADA
+🚀 VISÃO GERAL
+
+Esta documentação descreve todas as medidas de segurança implementadas no sistema QuimiDocs, incluindo correções de vulnerabilidades, prevenção de ataques e melhorias na robustez da aplicação.
+PI_2025_2/
+├── app/
+│   ├── security_config.py          ✅ NOVO - Configuração centralizada de segurança
+│   ├── security_middleware.py      ✅ NOVO - Middleware de proteção adicional
+│   ├── run.py                      ✅ MODIFICADO - Configurações de segurança
+│   ├── routes/
+│   │   ├── user_routes.py          ✅ MODIFICADO - Rate limiting e validações
+│   │   └── pdf_routes.py           ✅ MODIFICADO - Rate limiting e validações
+│   └── requirements.txt            ✅ MODIFICADO - Novas dependências
+
+1. PREVENÇÃO DE NOSQL INJECTION
+Problema Identificado:
+
+    ObjectIds sendo usados diretamente sem validação em consultas MongoDB
+
+    Possibilidade de injection através de IDs malformados
+
+Solução Implementada:
+def is_valid_objectid(id_str):
+    """Valida se uma string é um ObjectId válido"""
+    try:
+        ObjectId(id_str)
+        return True
+    except (InvalidId, TypeError):
+        return False
+
+# Uso em todas as rotas:
+if not is_valid_objectid(user_id):
+    return jsonify({"error": "ID inválido"}), 400
+    Arquivos Modificados:
+
+    pdf_routes.py
+
+    user_routes.py
+
+    product_routes.py
+
+📊 2. SISTEMA DE RATE LIMITING
+Problema Identificado:
+
+    Rotas /login vulneráveis a ataques de força bruta
+
+    Rotas /register permitiam criação ilimitada de contas
+
+    Ausência de controle de requisições por IP
+
+Solução Implementada:
+
+# security_config.py
+limiter = Limiter(
+    key_func=get_limiter_key,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+    strategy="fixed-window"
+)
+
+# Rotas protegidas:
+@limiter.limit("5 per minute")   # Login
+@limiter.limit("3 per hour")     # Registro
+@limiter.limit("10 per hour")    # Upload
+
+Limites Configurados:
+Rota	Limite	Proteção
+/login	5 por minuto	Força bruta
+/register	3 por hora	Spam de registros
+/upload	10 por hora	Abuso de storage
+/delete	5 por hora	Deleção em massa
+
+3. MIDDLEWARE DE SEGURANÇA
+Problema Identificado:
+
+    Falta de proteção em nível de WSGI
+
+    Ausência de detecção de atividades suspeitas
+
+    IPs maliciosos não eram bloqueados
+
+Solução Implementada:
+
+# security_middleware.py
+class SecurityMiddleware:
+    def __call__(self, environ, start_response):
+        client_ip = self.get_client_ip(environ)
+        if self.is_ip_blocked(client_ip):
+            return self.blocked_response(start_response)
+        if self.check_suspicious_activity(environ, client_ip):
+            return self.suspicious_response(start_response)
+
+Proteções do Middleware:
+
+    ✅ Bloqueio automático de IPs maliciosos
+
+    ✅ Detecção de SQL injection patterns
+
+    ✅ Verificação de User-Agent suspeitos
+
+    ✅ Controle de frequência de requisições
+
+📝 4. HEADERS DE SEGURANÇA HTTP
+Problema Identificado:
+
+    Headers de segurança ausentes nas respostas
+
+    Falta de informações sobre rate limiting
+
+    Exposição desnecessária de informações do servidor
+
+Solução Implementada:
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000'
+    
+    # Headers de rate limiting
+    response.headers['X-RateLimit-Limit'] = '200'
+    response.headers['X-RateLimit-Remaining'] = '199'
+    response.headers['X-RateLimit-Reset'] = reset_timestamp
+
+    5. VALIDAÇÃO DE UPLOAD DE ARQUIVOS
+Problema Identificado:
+
+    Upload de qualquer tipo de arquivo permitido
+
+    Ausência de limite de tamanho
+
+    Risco de upload de arquivos maliciosos
+
+Solução Implementada:
+ALLOWED_EXTENSIONS = {'pdf'}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def validate_file_size(file):
+    file.seek(0, os.SEEK_END)
+    file_length = file.tell()
+    return file_length <= MAX_FILE_SIZE
+
+ 6. PROTEÇÃO DE LOGS E DADOS SENSÍVEIS
+Problema Identificado:
+
+    Logs expunham credenciais AWS e informações sensíveis
+
+    Mensagens de erro com detalhes internos do sistema
+
+    Potencial vazamento de informações
+
+Solução Implementada:
+6. PROTEÇÃO DE LOGS E DADOS SENSÍVEIS
+Problema Identificado:
+
+    Logs expunham credenciais AWS e informações sensíveis
+
+    Mensagens de erro com detalhes internos do sistema
+
+    Potencial vazamento de informações
+
+Solução Implementada:
+
+7. NOVAS DEPENDÊNCIAS
+requirements.txt atualizado:
+
+flask-limiter==3.0.0        # Rate limiting
+redis==4.5.5               # Storage para rate limiting (opcional)
+
+8. ENDPOINTS DE GERENCIAMENTO
+Novos Endpoints:
+@app.route('/health', methods=['GET'])          # Health check da aplicação
+@app.route('/rate-limits', methods=['GET'])     # Informações de rate limiting
+
+
+🔍 9. MELHORIAS DE VALIDAÇÃO
+Validações Adicionadas:
+
+    ✅ Força de senha (mínimo 8 caracteres)
+
+    ✅ Formato de email básico
+
+    ✅ Verificação de usuário ativo
+
+    ✅ Validação de tipos de arquivo
+
+    ✅ Limite de tamanho de arquivo
+
+🚀 COMO TESTAR AS IMPLEMENTAÇÕES
+Teste de Rate Limiting:
+# Testar limite de login
+for i in {1..6}; do
+  curl -X POST http://localhost:5000/login -H "Content-Type: application/json" -d '{"email":"test@test.com","password":"test"}'
+done
+
+Teste de Validação de Upload:
+# Tentar upload de arquivo não permitido
+curl -X POST -F "file=@malicious.exe" http://localhost:5000/upload
+
+Verificar Headers de Segurança:
+curl -I http://localhost:5000/health
+
+
+📊 RESUMO DAS VULNERABILIDADES CORRIGIDAS
+Vulnerabilidade	Status	Severidade
+NoSQL Injection	✅ Corrigido	Crítica
+Força Bruta em Login	✅ Corrigido	Alta
+Spam de Registros	✅ Corrigido	Alta
+Upload de Arquivos Maliciosos	✅ Corrigido	Alta
+Exposição de Dados Sensíveis	✅ Corrigido	Média
+Falta de Headers de Segurança	✅ Corrigido	Média
+⚠️ PRÓXIMOS PASSOS RECOMENDADOS
+
+    Implementar CAPTCHA para rotas de registro e login
+
+    Adicionar validação de email para confirmação de contas
+
+    Configurar Redis para rate limiting em produção
+
+    Implementar auditoria completa de segurança
+
+    Realizar pentest regular para novas vulnerabilidades
+
+📅 Data da Implementação: 2025
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

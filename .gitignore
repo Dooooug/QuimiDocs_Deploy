@@ -1,0 +1,28 @@
+# Arquivos de configuração sensíveis
+.env
+*.env
+config.json
+secrets.json
+
+# Chaves privadas e credenciais
+*.pem
+*.key
+*.crt
+
+# Arquivos de banco de dados
+*.sqlite
+*.sqlite3
+*.db
+dump.rdb
+
+# Logs e arquivos temporários
+*.log
+*.tmp
+*.bak
+
+# Diretórios de cache e dependências
+node_modules/
+.vscode/
+.idea/
+__pycache__/
+.env

@@ -1,0 +1,75 @@
+services:
+  # Banco de Dados MongoDB
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb_container
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    networks:
+      - app_network
+
+  # Backend Flask
+  flask_app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    container_name: flask_app_container
+    ports:
+      - "5000:5000"
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME}
+      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/${MONGO_DB_NAME}?authSource=admin
+      MONGO_DB_NAME: ${MONGO_DB_NAME}
+      MONGO_COLLECTION_NAME: ${MONGO_COLLECTION_NAME}
+      FLASK_APP: run.py
+      FLASK_ENV: development
+    env_file:
+      - .env
+    volumes:
+      - ./app:/app
+    working_dir: /app
+    command: flask run --host=0.0.0.0 --port=5000 --reload
+    depends_on:
+      - mongodb
+    networks:
+      - app_network
+
+  # Frontend React (quimidocs)
+  quimidocs:
+    build:
+      context: ./quimidocs
+      dockerfile: Dockerfile
+    container_name: quimidocs_container
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./quimidocs:/app
+      - /app/node_modules
+    env_file:
+      - .env
+    working_dir: /app
+    command: npm start
+    depends_on:
+      - flask_app
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    stdin_open: true
+    tty: true
+    networks:
+      - app_network
+
+volumes:
+  mongo_data:
+
+networks:
+  app_network:
+    driver: bridge

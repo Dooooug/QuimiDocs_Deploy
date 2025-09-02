@@ -1,0 +1,18 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+venv
+.env
+instance
+*.db
+.git
+.venv
+venv
+__pycache__
+*.pyc
+*.log
+.DS_Store
+node_modules # Se você tiver frontend React no mesmo diretório
+npm-debug.log
+.env # Se você não quiser que o .env seja copiado para a imagem (preferimos montá-lo)

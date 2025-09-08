@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from bson.objectid import ObjectId
 
 class User:
@@ -81,7 +81,7 @@ class Product:
         self.pdf_s3_key = pdf_s3_key
         self.empresa = empresa
         self._id = _id
-        self.created_at = created_at if created_at is not None else datetime.utcnow()
+        self.created_at = created_at if created_at is not None else datetime.now(timezone.utc)
 
     def to_dict(self):
         product_dict = {

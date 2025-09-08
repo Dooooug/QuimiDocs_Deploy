@@ -6,7 +6,7 @@ from flask_cors import CORS
 import boto3
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime,timezone  
 import uuid
 from flask_jwt_extended import get_jwt_identity
 from bson.objectid import ObjectId
@@ -135,7 +135,7 @@ def upload_file():
             "original_filename": original_file_name,
             "s3_file_key": file_key,
             "url": file_url,
-            "uploaded_at": datetime.utcnow(),
+            "uploaded_at": datetime.now(timezone.utc),
             "uploaded_by_user_id": ObjectId(current_user_id)
         }
 
@@ -262,7 +262,7 @@ def health_check():
 
         return jsonify({
             "status": "healthy",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "services": {
                 "mongodb": "connected" if pdf_metadata_collection else "disconnected",
                 "aws_s3": "connected" if s3_client else "disconnected"

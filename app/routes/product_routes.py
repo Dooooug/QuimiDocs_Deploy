@@ -3,7 +3,7 @@ from flask import request, jsonify, Blueprint
 from flask_jwt_extended import get_jwt_identity
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 from app.models import Product, User
@@ -53,8 +53,11 @@ def _serialize_product(doc):
         except Exception:
             p["created_by"] = str(created_by_user_id)
 
-    return p
+    # 🎯 CORREÇÃO FINAL: Garante que o campo original seja sempre uma string
+    if "created_by_user_id" in p and p["created_by_user_id"]:
+        p["created_by_user_id"] = str(p["created_by_user_id"])
 
+    return p
 
 # ============================================================
 # TEST ROUTE
@@ -163,8 +166,8 @@ def create_product():
 
     try:
         product_dict = new_product.to_dict()
-        product_dict["created_at"] = datetime.utcnow()
-        product_dict["updated_at"] = datetime.utcnow()
+        product_dict["created_at"] = datetime.now(timezone.utc)
+        product_dict["updated_at"] = datetime.now(timezone.utc)
 
         result = Product.collection().insert_one(product_dict)
         new_product._id = result.inserted_id
@@ -228,12 +231,12 @@ def is_valid_objectid(id_str):
 @product_bp.route('/products/<product_id>', methods=['GET'])
 @role_required([ROLES['1'], ROLES['2']])
 def get_product(product_id):
-    # ✅ Validação contra NoSQL injection
     if not is_valid_objectid(product_id):
         return jsonify({"msg": "ID do produto inválido."}), 400
 
-
     try:
+        # 🎯 CORREÇÃO: Adicionamos a definição da variável `_id`
+        _id = ObjectId(product_id)
         doc = Product.collection().find_one({"_id": _id})
         if not doc:
             return jsonify({"msg": "Produto não encontrado."}), 404
@@ -291,7 +294,7 @@ def update_product(product_id):
         }
 
         update_doc = {k: v for k, v in data.items() if k in fields_allowed}
-        update_doc["updated_at"] = datetime.utcnow()
+        update_doc["updated_at"] = datetime.now(timezone.utc)
 
         Product.collection().update_one({"_id": _id}, {"$set": update_doc})
 
@@ -325,7 +328,7 @@ def update_product_status(product_id):
     try:
         result = Product.collection().update_one(
             {"_id": _id},
-            {"$set": {"status": status, "updated_at": datetime.utcnow()}}
+            {"$set": {"status": status, "updated_at": datetime.now(timezone.utc)}}
         )
         if result.matched_count == 0:
             return jsonify({"msg": "Produto não encontrado."}), 404

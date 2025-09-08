@@ -11,19 +11,12 @@ from app.models import User
 from app.utils import ROLES, role_required
 
 # user_routes.py (adições necessárias)
-from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from security_config import limiter, RATE_LIMITS, get_limiter_key
-
-
-
-limiter = Limiter(key_func=get_remote_address)
+from app.security_config import RATE_LIMITS, get_limiter_key, limiter
 
 
 # Configurar o limiter após criar o blueprint
 user_bp = Blueprint('user', __name__)
-limiter.limit(RATE_LIMITS['login'])(user_bp)  # Limite geral para o blueprint
-
 
 # Rota de registro de usuário
 #CODIGO ANTES
@@ -42,7 +35,6 @@ def register():
     email = data.get('email')
     senha = data.get('senha')
 '''
-
 #CODIGO DEPOIS
 #Sistema completo de validação e sanitização de dados de entrada.
 import re
@@ -52,13 +44,14 @@ def validate_email_address(email):
     """Valida endereço de email"""
     try:
         v = validate_email(email)
-        return v["email"]
+        return v.email
     except EmailNotValidError:
         return None
 
 def validate_password(password):
     """Valida força da senha"""
-    if len(password) < 8:
+    # 🎯 CORREÇÃO: Adicionada verificação para senha vazia
+    if not password or len(password) < 8:
         return False
     if not re.search(r'[A-Z]', password):
         return False
@@ -69,31 +62,60 @@ def validate_password(password):
     return True
 
 def sanitize_input(input_str, max_length=255):
-    """Remove caracteres potencialmente perigosos"""
+    """Remove caracteres potencialmente perigosos e espaços em branco desnecessários"""
     if not input_str or not isinstance(input_str, str):
         return None
     cleaned = re.sub(r'[<>\(\)\&\|\;\`\$]', '', input_str)
-    return cleaned[:max_length] if cleaned else None
+    # 🎯 CORREÇÃO: Adicionado .strip() para remover espaços em branco
+    return cleaned[:max_length].strip() if cleaned else None
 
 @user_bp.route('/register', methods=['POST'])
 @limiter.limit("2 per hour")  # Limita a 2 registros por hora por IP
 def register():
     data = request.get_json()
-    
-    # ✅ Validação e sanitização de entrada
-    nome_do_usuario = sanitize_input(data.get('nome_do_usuario'))
-    email = validate_email_address(data.get('email'))
+    if not data:
+        return jsonify({"msg": "Dados de requisição inválidos ou ausentes"}), 400
+
+    # 1. Extrair os dados brutos primeiro
+    nome_do_usuario_bruto = data.get('nome_do_usuario')
+    email_bruto = data.get('email')
     senha = data.get('senha')
-    
-    if not nome_do_usuario or not email or not senha:
-        return jsonify({"msg": "Dados inválidos"}), 400
-        
+
+    # 2. Validar a força da senha antes de qualquer outra coisa
     if not validate_password(senha):
         return jsonify({"msg": "Senha deve ter pelo menos 8 caracteres com letras maiúsculas, minúsculas e números"}), 400
 
-    # Extrai o nível (role) do JSON. Se não for fornecido, usa VIEWER como padrão.
-    # Mantém a lógica de role conforme solicitado, mas extrai da chave 'nivel'
-    role = data.get('nivel', ROLES['VIEWER']) 
+    # 3. Validar e-mail antes da validação genérica de campos obrigatórios
+    email = validate_email_address(email_bruto)
+    if not email:
+        return jsonify({"msg": "Endereço de email inválido"}), 400
+
+    # 4. Sanitizar o nome de usuário. Se a sanitização falhar, retorne um erro.
+    nome_do_usuario = sanitize_input(nome_do_usuario_bruto)
+
+    # Verificação extra: nome vazio ou contendo termos perigosos após sanitização
+    termos_proibidos = ["script", "alert", "onload", "iframe", "img", "svg", "object"]
+    if not nome_do_usuario or nome_do_usuario.lower() in termos_proibidos:
+        return jsonify({"msg": "Nome de usuário inválido"}), 400
+
+
+    # 5. Finalmente, faça a validação genérica dos campos obrigatórios
+    if not nome_do_usuario or not email or not senha:
+        return jsonify({"msg": "Nome de usuário, email e senha são obrigatórios"}), 400
+    
+
+    # Verificação de usuários já existentes
+    existing_user_by_name = User.collection().find_one({"nome_do_usuario": nome_do_usuario})
+    if existing_user_by_name:
+        return jsonify({"msg": "Nome de usuário já existe"}), 409
+    
+    existing_user_by_email = User.collection().find_one({"email": email})
+    if existing_user_by_email:
+        return jsonify({"msg": "Email já está em uso"}), 409
+
+    role = data.get('nivel', ROLES['3']) 
+    if role not in ROLES.values():
+        return jsonify({"msg": "Role inválido"}), 400
 
     # Extrai os campos adicionais do JSON
     cpf = data.get('cpf')
@@ -102,53 +124,37 @@ def register():
     data_de_nascimento = data.get('data_de_nascimento')
     planta = data.get('planta')
 
-    # Validação dos campos obrigatórios
-    if not nome_do_usuario or not email or not senha: # ATUALIZADO: Validando 'nome_do_usuario'
-        return jsonify({"msg": "Nome de usuário, email e senha são obrigatórios"}), 400
-
-    # Verifica se o nome de usuário já existe
-    if User.collection().find_one({"nome_do_usuario": nome_do_usuario}): # ATUALIZADO: Busca por 'nome_do_usuario'
-        return jsonify({"msg": "Nome de usuário já existe"}), 409
-    
-    # Verifica se o email já existe
-    if User.collection().find_one({"email": email}):
-        return jsonify({"msg": "Email já está em uso"}), 409
-
-    # Valida se o papel fornecido é um dos papéis permitidos
-    if role not in ROLES.values():
-        return jsonify({"msg": "Role inválido"}), 400
-
     # Gera o hash da senha antes de armazenar
     hashed_password = generate_password_hash(senha)
 
     # Cria uma nova instância de User e insere no banco de dados com todos os campos
     new_user = User(
-        username=nome_do_usuario, # Mapeia 'nome_do_usuario' do frontend para 'username' no modelo
+        username=nome_do_usuario,
         email=email,
         password_hash=hashed_password,
         role=role,
-        cpf=cpf, # NOVO: Adiciona o campo cpf
-        empresa=empresa, # NOVO: Adiciona o campo empresa
-        setor=setor, # NOVO: Adiciona o campo setor
-        data_de_nascimento=data_de_nascimento, # NOVO: Adiciona o campo data_de_nascimento
-        planta=planta # NOVO: Adiciona o campo planta
+        cpf=cpf,
+        empresa=empresa,
+        setor=setor,
+        data_de_nascimento=data_de_nascimento,
+        planta=planta
     )
     result = User.collection().insert_one(new_user.to_dict())
-    new_user._id = result.inserted_id # Atribui o ID gerado pelo MongoDB ao objeto
+    new_user._id = result.inserted_id
 
     # Retorna uma resposta de sucesso
     return jsonify({
         "msg": "Usuário registrado com sucesso",
         "user": {
             "id": str(new_user._id),
-            "nome_do_usuario": new_user.username, # Retorna como nome_do_usuario para consistência com o frontend
+            "nome_do_usuario": new_user.username,
             "email": new_user.email,
             "role": new_user.role,
-            "cpf": new_user.cpf, # NOVO: Inclui cpf na resposta
-            "empresa": new_user.empresa, # NOVO: Inclui empresa na resposta
-            "setor": new_user.setor, # NOVO: Inclui setor na resposta
-            "data_de_nascimento": new_user.data_de_nascimento, # NOVO: Inclui data_de_nascimento na resposta
-            "planta": new_user.planta # NOVO: Inclui planta na resposta
+            "cpf": new_user.cpf,
+            "empresa": new_user.empresa,
+            "setor": new_user.setor,
+            "data_de_nascimento": new_user.data_de_nascimento,
+            "planta": new_user.planta
         }
     }), 201
 
@@ -186,7 +192,7 @@ def login():
 
 # Get User by ID (sem alterações necessárias aqui para este problema)
 @user_bp.route('/users', methods=['GET'])
-@role_required([ROLES['ADMIN']])
+@role_required([ROLES['1']])
 def get_users():
     users_cursor = User.collection().find({})
     users_list = []
@@ -210,12 +216,12 @@ def get_users():
 
 # Update User (sem alterações necessárias aqui para este problema, mas se 'planta' e outros campos
 # também pudessem ser atualizados, eles precisariam ser adicionados aqui)
+
 @user_bp.route('/users/<user_id>', methods=['PUT'])
-@role_required([ROLES['ADMIN']])
+@role_required([ROLES['1']])
 def update_user(user_id):
     """
     Atualiza um usuário existente pelo ID. Apenas para administradores.
-    Permite atualizar 'username', 'email', 'senha' e 'role'.
     """
     try:
         user_data_from_db = User.collection().find_one({"_id": ObjectId(user_id)})
@@ -225,70 +231,83 @@ def update_user(user_id):
     if not user_data_from_db:
         return jsonify({"msg": "Usuário não encontrado"}), 404
 
-    data = request.get_json()
+    # 🔑 Tentar obter o JSON, e retornar 400 se for nulo ou inválido
+    data = request.get_json(silent=True)
+    if not data or not isinstance(data, dict):
+        return jsonify({"msg": "Dados de requisição inválidos ou ausentes"}), 400
+
     update_data = {}
 
-    # ATUALIZADO: Mapeia 'nome_do_usuario' do frontend para 'username' no backend
-    if 'nome_do_usuario' in data:
-        update_data['username'] = data['nome_do_usuario']
-    
-    if 'email' in data:
-        # Opcional: Adicionar validação para email duplicado ao atualizar, excluindo o próprio usuário
-        existing_user_with_email = User.collection().find_one({"email": data['email'], "_id": {"$ne": ObjectId(user_id)}})
-        if existing_user_with_email:
-            return jsonify({"msg": "Email já está em uso por outro usuário"}), 409
-        update_data['email'] = data['email']
-    
-    # ATUALIZADO: Mapeia 'nivel' do frontend para 'role' no backend
-    if 'nivel' in data:
-        if data['nivel'] not in ROLES.values():
-            return jsonify({"msg": "Role inválido"}), 400
-        update_data['role'] = data['nivel'] # Usa 'nivel' do frontend
-    
-    if 'senha' in data:
-        update_data['password_hash'] = generate_password_hash(data['senha'])
+    # Mapeamento do payload para os campos do banco de dados
+    payload_to_db_map = {
+        'nome_do_usuario': 'username',
+        'email': 'email',
+        'nivel': 'role',
+        'senha': 'password_hash',
+        'cpf': 'cpf',
+        'empresa': 'empresa',
+        'setor': 'setor',
+        'data_de_nascimento': 'data_de_nascimento',
+        'planta': 'planta'
+    }
 
-    # NOVO: Adiciona campos adicionais para atualização, se presentes na requisição
-    if 'cpf' in data:
-        update_data['cpf'] = data['cpf']
-    if 'empresa' in data:
-        update_data['empresa'] = data['empresa']
-    if 'setor' in data:
-        update_data['setor'] = data['setor']
-    if 'data_de_nascimento' in data:
-        update_data['data_de_nascimento'] = data['data_de_nascimento']
-    if 'planta' in data:
-        update_data['planta'] = data['planta']
+    # Processar cada campo no payload
+    for payload_key, db_key in payload_to_db_map.items():
+        if payload_key in data:
+            if db_key == 'email':
+                # Validação e verificação de e-mail duplicado
+                email_bruto = data.get('email')
+                email_validado = validate_email_address(email_bruto)
+                if not email_validado:
+                    return jsonify({"msg": "Endereço de email inválido"}), 400
 
+                existing_user_with_email = User.collection().find_one({
+                    "email": email_validado,
+                    "_id": {"$ne": ObjectId(user_id)}
+                })
+                if existing_user_with_email:
+                    return jsonify({"msg": "Email já está em uso por outro usuário"}), 409
+                update_data['email'] = email_validado
 
-    if update_data:
-        User.collection().update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
-        updated_user_data = User.collection().find_one({"_id": ObjectId(user_id)})
-        updated_user = User.from_dict(updated_user_data)
-        
-        # Constrói a resposta com os dados atualizados, incluindo os novos campos
-        response_user_data = {
+            elif db_key == 'role':
+                # Validação de 'role'
+                if data['nivel'] not in ROLES.values():
+                    return jsonify({"msg": "Role inválido"}), 400
+                update_data['role'] = data['nivel']
+
+            elif db_key == 'password_hash':
+                # Hashing da senha
+                update_data['password_hash'] = generate_password_hash(data['senha'])
+            
+            else:
+                update_data[db_key] = data[payload_key]
+
+    if not update_data:
+        return jsonify({"msg": "Nenhum dado para atualizar"}), 400
+
+    User.collection().update_one({"_id": ObjectId(user_id)}, {"$set": update_data})
+    updated_user_data = User.collection().find_one({"_id": ObjectId(user_id)})
+    updated_user = User.from_dict(updated_user_data)
+
+    return jsonify({
+        "msg": "Usuário atualizado com sucesso",
+        "user": {
             "id": str(updated_user._id),
-            "nome_do_usuario": updated_user.username, 
+            "nome_do_usuario": updated_user.username,
             "email": updated_user.email,
             "role": updated_user.role,
-            "cpf": updated_user.cpf, # Inclui cpf
-            "empresa": updated_user.empresa, # Inclui empresa
-            "setor": updated_user.setor, # Inclui setor
-            "data_de_nascimento": updated_user.data_de_nascimento, # Inclui data_de_nascimento
-            "planta": updated_user.planta # Inclui planta
+            "cpf": updated_user.cpf,
+            "empresa": updated_user.empresa,
+            "setor": updated_user.setor,
+            "data_de_nascimento": updated_user.data_de_nascimento,
+            "planta": updated_user.planta
         }
+    }), 200
 
-        return jsonify({
-            "msg": "Usuário atualizado com sucesso",
-            "user": response_user_data
-        }), 200
-    else:
-        return jsonify({"msg": "Nenhum dado para atualizar"}), 400
 
 # Delete User (sem alterações necessárias aqui para este problema)
 @user_bp.route('/users/<user_id>', methods=['DELETE'])
-@role_required([ROLES['ADMIN']])
+@role_required([ROLES['1']])
 def delete_user(user_id):
     """
     Deleta um usuário pelo ID. Apenas para administradores.

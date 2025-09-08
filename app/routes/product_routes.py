@@ -68,7 +68,7 @@ def test_products():
 # NEXT PRODUCT CODE
 # ============================================================
 @product_bp.route('/products/next-code', methods=['GET'])
-@role_required([ROLES['ADMIN'], ROLES['ANALYST']])
+@role_required([ROLES['1'], ROLES['2']])
 def get_next_product_code():
     try:
         last_product = Product.collection().find_one(sort=[('_id', -1)])
@@ -92,7 +92,7 @@ def get_next_product_code():
 # CREATE PRODUCT
 # ============================================================
 @product_bp.route('/products', methods=['POST'])
-@role_required([ROLES['ADMIN'], ROLES['ANALYST']])
+@role_required([ROLES['1'], ROLES['2']])
 def create_product():
     current_user_id = get_jwt_identity()
     try:
@@ -186,7 +186,7 @@ def create_product():
 # LIST PRODUCTS
 # ============================================================
 @product_bp.route('/products', methods=['GET'])
-@role_required([ROLES['ADMIN'], ROLES['ANALYST']])
+@role_required([ROLES['1'], ROLES['2']])
 def list_products():
     try:
         status_filter = request.args.get('status')
@@ -226,7 +226,7 @@ def is_valid_objectid(id_str):
         return False
 
 @product_bp.route('/products/<product_id>', methods=['GET'])
-@role_required([ROLES['ADMIN'], ROLES['ANALYST']])
+@role_required([ROLES['1'], ROLES['2']])
 def get_product(product_id):
     # ✅ Validação contra NoSQL injection
     if not is_valid_objectid(product_id):
@@ -248,7 +248,7 @@ def get_product(product_id):
 # UPDATE PRODUCT
 # ============================================================
 @product_bp.route('/products/<product_id>', methods=['PUT'])
-@role_required([ROLES['ADMIN'], ROLES['ANALYST']])
+@role_required([ROLES['1'], ROLES['2']])
 def update_product(product_id):
     current_user_id = get_jwt_identity()
     try:
@@ -267,7 +267,7 @@ def update_product(product_id):
         user_role = User.collection().find_one({"_id": current_oid}, {"role": 1})
         role_value = user_role.get("role") if user_role else None
 
-        if role_value == ROLES['ANALYST']:
+        if role_value == ROLES['2']:
             if str(doc.get("created_by_user_id")) != str(current_oid):
                 return jsonify({"msg": "Você não tem permissão para editar este produto."}), 403
             if doc.get("status") == "aprovado":
@@ -309,7 +309,7 @@ def update_product(product_id):
 # UPDATE STATUS
 # ============================================================
 @product_bp.route('/products/<product_id>/status', methods=['PUT'])
-@role_required([ROLES['ADMIN']])
+@role_required([ROLES['1']])
 def update_product_status(product_id):
     try:
         _id = ObjectId(product_id)
@@ -344,7 +344,7 @@ def update_product_status(product_id):
 # DELETE PRODUCT
 # ============================================================
 @product_bp.route('/products/<product_id>', methods=['DELETE'])
-@role_required([ROLES['ADMIN']])
+@role_required([ROLES['1']])
 def delete_product(product_id):
     try:
         _id = ObjectId(product_id)

@@ -96,7 +96,7 @@ def get_aws_client(service_name):
 # ============================================================
 
 @pdf_bp.route('/upload', methods=['POST'])
-@role_required([ROLES['ADMIN']])
+@role_required([ROLES['1']])
 @limiter.limit("10 per hour")  # Limite de 10 uploads por hora por admin
 def upload_file():
     """
@@ -156,7 +156,7 @@ def upload_file():
         return jsonify({"error": "Erro interno do servidor"}), 500
 
 @pdf_bp.route('/pdfs', methods=['GET'])
-@role_required([ROLES['ADMIN'], ROLES['ANALYST'], ROLES['VIEWER']])
+@role_required([ROLES['1'], ROLES['2'], ROLES['3']])
 @limiter.limit("30 per minute")
 def get_pdfs():
     """
@@ -185,7 +185,7 @@ def get_pdfs():
         query_filter = {"pdf_url": {"$exists": True, "$ne": None}}
         projection = {}
 
-        if current_user.role == ROLES['VIEWER']:
+        if current_user.role == ROLES['3']:
             query_filter["status"] = "aprovado"
             projection = {
                 "_id": 1,
@@ -193,12 +193,12 @@ def get_pdfs():
                 "qtade_maxima_armazenada": 1,
                 "pdf_url": 1
             }
-        elif current_user.role == ROLES['ANALYST']:
+        elif current_user.role == ROLES['2']:
             query_filter["$or"] = [
                 {"status": "aprovado"},
                 {"created_by_user_id": current_user_id_str}
             ]
-        # ADMIN vê todos
+        # ADMIN=1 vê todos
 
         products_with_pdfs = []
         products_cursor = Product.collection().find(query_filter, projection)
@@ -216,7 +216,7 @@ def get_pdfs():
         return jsonify({"error": "Erro interno do servidor"}), 500
 
 @pdf_bp.route('/pdfs/<pdf_id>', methods=['DELETE'])
-@role_required([ROLES['ADMIN']])
+@role_required([ROLES['1']])
 @limiter.limit("5 per hour")
 def delete_pdf(pdf_id):
     """

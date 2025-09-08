@@ -1,0 +1,100 @@
+📊 DOCUMENTAÇÃO DE TESTES UNITÁRIOS – CRUD DE USUÁRIOS
+🚀 VISÃO GERAL
+
+Este documento descreve os testes unitários implementados para o módulo de gerenciamento de usuários (user_routes.py).
+O objetivo é garantir que as rotas críticas do sistema QuimiDocs atendam corretamente às regras de negócio, validações de segurança e tratamento de erros.
+
+Estratégia aplicada:
+
+pytest + mongomock → garante isolamento sem afetar banco real.
+
+JWT → testes de rotas protegidas exigem autenticação de administrador.
+
+Cobertura completa CRUD → registro, login, listagem, atualização e deleção de usuários.
+
+🔐 1. FIXTURE E AMBIENTE
+
+client(monkeypatch) cria instância da aplicação em modo teste (create_app(testing=True)).
+
+Substitui User.collection() por banco em memória (mongomock).
+
+get_auth_header registra e autentica admin, retornando Authorization: Bearer <token> para acessar rotas restritas.
+
+🧪 2. TESTES DE REGISTRO (/register)
+✅ test_register_success
+
+Entrada válida (nome_do_usuario, email, senha, nivel).
+
+Esperado: 201 Created + mensagem "Usuário registrado com sucesso".
+
+Confirma retorno de id e dados consistentes.
+
+✅ test_register_duplicate_email
+
+Registra usuário com email X.
+
+Tenta registrar novamente com mesmo email.
+
+Esperado: 409 Conflict + "Email já está em uso".
+
+✅ test_register_weak_password
+
+Usa senha fraca ("123").
+
+Esperado: 400 Bad Request + "Senha deve ter pelo menos 8 caracteres...".
+
+📌 Cobertura de segurança: validações robustas (email válido, senha forte, duplicidade).
+
+🔐 3. TESTES DE LOGIN (/login)
+✅ test_login_success
+
+Usuário registrado com credenciais válidas.
+
+Esperado: 200 OK + access_token + dados do usuário.
+
+✅ test_login_invalid
+
+Tenta logar com email inexistente.
+
+Esperado: 401 Unauthorized + "Email ou senha inválidos".
+
+📌 Cobertura de segurança: protege contra login sem credenciais válidas.
+
+📋 4. TESTES DE LISTAGEM (/users)
+✅ test_list_users
+
+Admin cadastrado + outro usuário.
+
+Requisição GET /users autenticada.
+
+Esperado: 200 OK + lista contendo ambos os emails.
+
+📌 Cobertura de segurança: rota protegida por role_required([ADMIN]).
+
+✏️ 5. TESTES DE ATUALIZAÇÃO (PUT /users/<id>)
+✅ test_update_user_success
+
+Cria usuário, atualiza nome_do_usuario.
+
+Esperado: 200 OK + "Usuário atualizado com sucesso".
+
+✅ test_update_user_conflict_email
+
+Cria dois usuários distintos.
+
+Tenta atualizar email do segundo para o email do primeiro.
+
+Esperado: 409 Conflict + "Email já está em uso por outro usuário".
+
+📌 Cobertura de segurança: validação de ObjectId e duplicidade de email.
+
+🗑️ 6. TESTES DE DELEÇÃO (DELETE /users/<id>)
+✅ test_delete_user_success
+
+Cria usuário.
+
+Deleta via rota autenticada.
+
+Esperado: 200 OK + "Usuário deletado com sucesso".
+
+📌 Cobertura de segurança: validação de ID + restrição de acesso a admins.

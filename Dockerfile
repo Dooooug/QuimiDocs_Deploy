@@ -6,8 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-# Copia os arquivos de desenvolvimento (serão sobrescritos pelo volume)
-COPY . .
+
 
 EXPOSE 3000
 

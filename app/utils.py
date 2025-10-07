@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 import functools
 import logging
 
-# Importa a classe User do módulo models (certifique-se que app/models.py está correto)
+# Importa a classe User do módulo models
 from app.models import User
 
 # Define os papéis (roles) disponíveis na aplicação
@@ -24,9 +24,6 @@ def is_valid_objectid(oid):
     except Exception:
         return False
 
-#Sistema de autorização robusto com validação de token, verificação de usuário ativo e proteção contra informações sensíveis.
-from app.utils import ROLES
-
 def role_required(required_roles):
     def decorator(fn):
         @functools.wraps(fn)
@@ -37,8 +34,13 @@ def role_required(required_roles):
 
                 if not current_user_id or not is_valid_objectid(current_user_id):
                     return jsonify({"msg": "Token inválido"}), 401
+                
+                user_collection = User.collection()
+                if user_collection is None:
+                    logging.error("A coleção de usuários não está inicializada. Verifique a conexão com o banco de dados na inicialização do app.")
+                    return jsonify({"msg": "Erro de serviço: A conexão com o banco de dados não está disponível."}), 503
 
-                user_data = User.collection().find_one(
+                user_data = user_collection.find_one(
                     {"_id": ObjectId(current_user_id)},
                     {"username": 1, "role": 1, "active": 1}
                 )
@@ -50,8 +52,6 @@ def role_required(required_roles):
                     return jsonify({"msg": "Usuário desativado"}), 403
 
                 user_role = user_data.get('role')
-
-                # Aceita se o valor for exatamente o exigido OU se for a chave cujo valor bate
                 if not (
                     user_role in required_roles or
                     ROLES.get(str(user_role)) in required_roles
@@ -60,8 +60,9 @@ def role_required(required_roles):
                     return jsonify({"msg": "Acesso negado: Nível de permissão insuficiente"}), 403
 
                 return fn(*args, **kwargs)
+            
             except Exception as e:
-                logging.error(f"Erro na verificação de role: {str(e)}")
+                logging.error(f"Erro inesperado na verificação de role: {str(e)}")
                 return jsonify({"msg": "Erro de autorização"}), 500
         return wrapper
     return decorator

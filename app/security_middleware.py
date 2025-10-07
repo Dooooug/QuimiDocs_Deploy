@@ -6,6 +6,7 @@ import logging
 from datetime import datetime, timedelta
 import re
 import json   # Necessário para montar respostas JSON
+import io  # <-- ADICIONE ESTA LINHA
 
 class SecurityMiddleware:
     """Middleware de segurança para proteção adicional
@@ -74,9 +75,9 @@ class SecurityMiddleware:
             self.record_suspicious_activity(client_ip, "Missing/invalid User-Agent")
             return True
 
-        # 2. Detecta padrões de SQL Injection na query ou body
-        if self.detect_sql_injection(environ):
-            self.record_suspicious_activity(client_ip, "SQL Injection attempt")
+        # 2. Detecta padrões de Injeção (SQL/NoSQL) na query ou body
+        if self.detect_injection_attempt(environ):
+            self.record_suspicious_activity(client_ip, "Injection attempt detected")
             return True
 
         # 3. Alta frequência de acessos em endpoints sensíveis (/login, /register, etc.)
@@ -86,48 +87,65 @@ class SecurityMiddleware:
 
         return False
 
-    def detect_sql_injection(self, environ):
-        """Detecta tentativas básicas de SQL injection
-        ⚠️ IMPORTANTE: Útil em SQL tradicional, mas redundante em MongoDB.
+    def detect_injection_attempt(self, environ):
         """
-        query_string = environ.get('QUERY_STRING', '')
-        injection_patterns = [
-            r'union.*select',
-            r'select.*from',
-            r'insert.*into',
-            r'delete.*from',
-            r'drop.*table',
-            r'--',
-            r'/\*',
-            r'waitfor.*delay',
-            r'xp_cmdshell'
+        Detecta tentativas de injeção (SQL e NoSQL), ignorando o corpo
+        de requisições de upload de arquivos para evitar falsos positivos.
+        """
+        # Padrões de NoSQL Injection (focados em operadores perigosos e JS)
+        nosql_patterns = [
+            r'\$where',          # Operador $where, muito perigoso
+            r'mapReduce',        # Comando MapReduce
+            r'group',            # Operador de group
+            r'sleep\(',          # Tentativas de ataques de tempo (timing attacks)
+            r'benchmark\('       
+        ]
+
+        # Padrões de SQL Injection (mantidos como defesa em profundidade)
+        sql_patterns = [
+            r'union.*select', r'select.*from', r'insert.*into',
+            r'delete.*from', r'drop.*table', r'--', r'/\*',
+            r'waitfor.*delay', r'xp_cmdshell'
         ]
         
-        # Verifica query string
-        for pattern in injection_patterns:
+        # Combinamos ambas as listas para uma verificação completa
+        all_patterns = nosql_patterns + sql_patterns
+        
+        # 1. Verifica a query string (parâmetros na URL)
+        query_string = environ.get('QUERY_STRING', '')
+        for pattern in all_patterns:
             if re.search(pattern, query_string, re.IGNORECASE):
+                logging.warning(f"Injection attempt detected in query string: {query_string}")
                 return True
 
-        # ⚠️ Esta parte pode causar conflito com request.get_json() no Flask
-        # porque lê manualmente o corpo da requisição (wsgi.input).
-        # Se não for necessário, pode ser removida.
+        # 2. Verifica o corpo (body) da requisição, EXCETO para upload de arquivos
         if environ['REQUEST_METHOD'] in ['POST', 'PUT']:
+            content_type = environ.get('CONTENT_TYPE', '')
+
+            # ESSA É A REGRA QUE PERMITE O UPLOAD DE PDF:
+            # Se for um upload de arquivo, não verifique o corpo para evitar falsos positivos.
+            if 'multipart/form-data' in content_type:
+                return False
+
             try:
                 content_length = int(environ.get('CONTENT_LENGTH', 0))
                 if content_length > 0:
-                    request_body = environ['wsgi.input'].read(content_length)
-                    # Corrige: método read aceita qualquer argumento
-                    environ['wsgi.input'] = type(
-                        '', (object,), {'read': lambda self=None, *args, **kwargs: request_body}
-                    )()
-                    for pattern in injection_patterns:
-                        if re.search(pattern, request_body.decode('utf-8', 'ignore'), re.IGNORECASE):
+                    request_body_bytes = environ['wsgi.input'].read(content_length)
+
+                    # SOLUÇÃO: Substitui o stream original por um novo, em memória
+                    environ['wsgi.input'] = io.BytesIO(request_body_bytes)
+
+                    request_body_str = request_body_bytes.decode('utf-8', 'ignore')
+
+                    for pattern in all_patterns:
+                        if re.search(pattern, request_body_str, re.IGNORECASE):
+                            logging.warning("Injection attempt detected in request body.")
                             return True
-            except:
+            except Exception as e:
+                logging.error(f"Error reading request body in middleware: {e}")
                 pass
         
         return False
-
     def is_sensitive_path(self, path):
         """Define rotas críticas que merecem monitoramento mais rigoroso"""
         sensitive_paths = [

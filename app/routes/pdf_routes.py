@@ -1,3 +1,8 @@
+# app/routes/pdf_routes.py
+
+# ============================================================
+# IMPORTS
+# ============================================================
 import os
 import logging
 import re
@@ -6,25 +11,20 @@ from flask_cors import CORS
 import boto3
 from dotenv import load_dotenv
 from pymongo import MongoClient
-from datetime import datetime,timezone  
+from datetime import datetime, timezone
 import uuid
 from flask_jwt_extended import get_jwt_identity
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-
-# Importa as classes User e Product
 from app.models import User, Product
-# Importa o decorador role_required e a constante ROLES
 from app.utils import ROLES, role_required
-# Importa o limiter centralizado
 from app.security_config import limiter
 
 load_dotenv()
 
 # ============================================================
-# CONFIGURAÇÃO DE LOGGING COM FILTRO DE SEGURANÇA
+# CONFIGURAÇÃO DE LOGGING
 # ============================================================
-
 class SensitiveDataFilter(logging.Filter):
     """Filtro para remover informações sensíveis dos logs"""
     def filter(self, record):
@@ -49,16 +49,56 @@ for handler in logging.getLogger().handlers:
     handler.addFilter(SensitiveDataFilter())
 
 # ============================================================
-# BLUEPRINT
+# BLUEPRINT E CONEXÕES GLOBAIS
 # ============================================================
-
 pdf_bp = Blueprint("pdf", __name__)
 CORS(pdf_bp, resources={r"/*": {"origins": "*"}})
 
-# Conexões globais (MongoDB e AWS S3)
+# Variáveis globais que serão inicializadas pela função init_services
+# Elas começam como None e recebem as conexões ativas quando o app inicia.
 s3_client = None
 s3_bucket_name = os.getenv("AWS_BUCKET_NAME")
 pdf_metadata_collection = None
+
+
+# ============================================================
+# FUNÇÃO DE INICIALIZAÇÃO DOS SERVIÇOS (NOVA FUNÇÃO)
+# ============================================================
+def init_services():
+    """
+    Inicializa as conexões com MongoDB e AWS S3.
+    Esta função é chamada uma vez quando a aplicação Flask é iniciada.
+    """
+    # A palavra-chave 'global' nos permite modificar as variáveis declaradas fora desta função.
+    global s3_client, pdf_metadata_collection
+    
+    logging.info("Inicializando conexões com serviços externos (MongoDB, S3)...")
+
+    # 1. Conexão com AWS S3: Só tenta conectar se ainda não houver um cliente.
+    if not s3_client:
+        s3_client = get_aws_client('s3')
+        if s3_client:
+            logging.info("Cliente AWS S3 inicializado com sucesso.")
+        else:
+            logging.error("Falha ao inicializar o cliente AWS S3. Verifique as credenciais e configurações no .env.")
+
+    # 2. Conexão com MongoDB: Só tenta conectar se a coleção não estiver definida.
+    if not pdf_metadata_collection:
+        mongo_uri = os.getenv("MONGO_URI")
+        db_name = os.getenv("MONGO_DB_NAME")
+
+        if not mongo_uri or not db_name:
+            logging.error("MONGO_URI ou MONGO_DB_NAME não encontrados nas variáveis de ambiente.")
+            return
+
+        try:
+            mongo_client = MongoClient(mongo_uri)
+            db = mongo_client[db_name]
+            # Define a coleção específica que usaremos para os metadados dos PDFs.
+            pdf_metadata_collection = db.pdf_metadata
+            logging.info(f"Conectado ao MongoDB no banco de dados '{db_name}' com sucesso.")
+        except Exception as e:
+            logging.error(f"Não foi possível conectar ao MongoDB: {e}")
 
 # ============================================================
 # FUNÇÕES DE VALIDAÇÃO
@@ -95,20 +135,27 @@ def get_aws_client(service_name):
 # ROTAS
 # ============================================================
 
-@pdf_bp.route('/upload', methods=['POST'])
+@pdf_bp.route('/upload/<product_id>', methods=['POST'])
 @role_required([ROLES['1']])
-@limiter.limit("10 per hour")  # Limite de 10 uploads por hora por admin
-def upload_file():
+@limiter.limit("10 per hour")
+def upload_file(product_id):
     """
-    Upload de arquivos PDF para S3 e armazenamento de metadados no MongoDB
+    Upload de arquivos PDF para S3, armazenamento de metadados no MongoDB
+    e associação do PDF ao produto especificado.
     """
-    logging.info("Recebendo requisição de upload de arquivo...")
+    logging.info(f"Recebendo requisição de upload para o produto ID: {product_id}")
+
+    # Validação inicial do ID do produto
+    if not is_valid_objectid(product_id):
+        return jsonify({"error": "ID de produto inválido"}), 400
 
     if s3_client is None or s3_bucket_name is None:
-        return jsonify({"error": "Configuração do AWS S3 inválida"}), 500
+        logging.error("Configuração do AWS S3 inválida no momento da requisição.")
+        return jsonify({"error": "Configuração do serviço de armazenamento inválida"}), 500
 
-    if pdf_metadata_collection is None:
-        return jsonify({"error": "Configuração do MongoDB inválida"}), 500
+    if pdf_metadata_collection is None or Product.collection() is None:
+        logging.error("Configuração do MongoDB inválida no momento da requisição.")
+        return jsonify({"error": "Configuração do banco de dados inválida"}), 500
 
     if 'file' not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
@@ -118,6 +165,7 @@ def upload_file():
         return jsonify({"error": "Nenhum arquivo selecionado"}), 400
 
     try:
+        # 1. Upload para o S3 (como já estava)
         original_file_name = file.filename
         file_extension = os.path.splitext(original_file_name)[1]
         unique_s3_file_name = f"{uuid.uuid4()}{file_extension}"
@@ -127,33 +175,55 @@ def upload_file():
 
         file_url = f"https://{s3_bucket_name}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{file_key}"
 
+        # 2. Criação dos metadados (como já estava)
         current_user_id = get_jwt_identity()
         if not is_valid_objectid(current_user_id):
             return jsonify({"error": "Erro de autenticação"}), 401
-
+        
+        # ALTERAÇÃO 2: Adicionamos o ID do produto aos metadados para referência futura.
         pdf_document_metadata = {
             "original_filename": original_file_name,
             "s3_file_key": file_key,
             "url": file_url,
             "uploaded_at": datetime.now(timezone.utc),
-            "uploaded_by_user_id": ObjectId(current_user_id)
+            "uploaded_by_user_id": ObjectId(current_user_id),
+            "associated_product_id": ObjectId(product_id) 
         }
 
         insert_result = pdf_metadata_collection.insert_one(pdf_document_metadata)
+        
+        # ALTERAÇÃO 3: Atualizar o documento do produto com a URL do PDF.
+        # Esta é a etapa crucial que estava faltando.
+        update_result = Product.collection().update_one(
+            {"_id": ObjectId(product_id)},
+            {"$set": {
+                "pdf_url": file_url,
+                "pdf_s3_key": file_key,
+                "pdf_metadata_id": insert_result.inserted_id,
+                "updated_at": datetime.now(timezone.utc)
+            }}
+        )
+
+        # Se nenhum produto foi encontrado com o ID fornecido
+        if update_result.matched_count == 0:
+            logging.warning(f"Upload bem-sucedido, mas produto com ID {product_id} não foi encontrado para associação.")
+            # Opcional: deletar o arquivo do S3 e os metadados se o produto não existe
+            s3_client.delete_object(Bucket=s3_bucket_name, Key=file_key)
+            pdf_metadata_collection.delete_one({"_id": insert_result.inserted_id})
+            return jsonify({"error": "Produto não encontrado"}), 404
 
         return jsonify({
-            "message": "Arquivo enviado com sucesso",
+            "message": "Arquivo enviado e associado ao produto com sucesso",
             "url": file_url,
             "s3_file_key": file_key,
-            "id": str(insert_result.inserted_id),
-            "original_filename": original_file_name
+            "id": str(insert_result.inserted_id)
         }), 200
 
-    except boto3.exceptions.S3UploadFailedError:
-        return jsonify({"error": "Erro ao enviar arquivo"}), 500
     except Exception as e:
-        logging.error(f"Erro inesperado: {type(e).__name__}")
-        return jsonify({"error": "Erro interno do servidor"}), 500
+        # Melhoramos o log de erro para nos dar mais detalhes sobre o que falhou
+        logging.error(f"Erro inesperado no upload: {e}", exc_info=True)
+        return jsonify({"error": "Ocorreu um erro interno no servidor ao processar o arquivo."}), 500
+
 
 @pdf_bp.route('/pdfs', methods=['GET'])
 @role_required([ROLES['1'], ROLES['2'], ROLES['3']])

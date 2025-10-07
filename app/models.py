@@ -6,7 +6,7 @@ class User:
 
     def __init__(self, username, email, password_hash, role,
                  cpf=None, empresa=None, setor=None, data_de_nascimento=None, planta=None,
-                 _id=None):
+                 _id=None,created_at=None,last_access=None):
         self.username = username
         self.email = email
         self.password_hash = password_hash
@@ -17,6 +17,8 @@ class User:
         self.data_de_nascimento = data_de_nascimento
         self.planta = planta
         self._id = _id
+        self.created_at = created_at if created_at is not None else datetime.now(timezone.utc)
+        self.last_access = last_access
 
     def to_dict(self):
         user_dict = {
@@ -28,7 +30,9 @@ class User:
             "empresa": self.empresa,
             "setor": self.setor,
             "data_de_nascimento": self.data_de_nascimento,
-            "planta": self.planta
+            "planta": self.planta,
+            "created_at": self.created_at,
+            "last_access": self.last_access
         }
         if self._id:
             user_dict["_id"] = str(self._id)   # 👈 Convertendo para string
@@ -36,6 +40,21 @@ class User:
 
     @classmethod
     def from_dict(cls, data):
+         # Este trecho cria a variável 'created_at_data'
+        created_at_data = data.get("created_at")
+        if isinstance(created_at_data, str):
+            try:
+                # Tenta converter a string de data para um objeto datetime
+                created_at_data = datetime.fromisoformat(created_at_data)
+            except (ValueError, TypeError):
+                # Se a conversão falhar, ignora (mantém como None ou o valor original)
+                pass
+        last_access_data = data.get("last_access") # ✅ 4. Lógica para buscar o last_access
+        if isinstance(last_access_data, str):
+            try:
+                last_access_data = datetime.fromisoformat(last_access_data)
+            except (ValueError, TypeError):
+                pass
         return cls(
             username=data.get('username'),
             email=data.get('email'),
@@ -46,7 +65,9 @@ class User:
             setor=data.get('setor'),
             data_de_nascimento=data.get('data_de_nascimento'),
             planta=data.get('planta'),
-            _id=data.get('_id')
+            _id=data.get('_id'),
+            created_at=created_at_data,
+            last_access=last_access_data
         )
 
     @classmethod

@@ -35,7 +35,7 @@ def create_default_admin_user():
             username=DEFAULT_ADMIN_USERNAME,
             email=DEFAULT_ADMIN_EMAIL,
             password_hash=hashed_password,
-            role=ROLES['ADMIN']
+            role=ROLES['1']
         )
         User.collection().insert_one(new_user.to_dict())
         logging.info("Usuário administrador padrão criado com sucesso.")

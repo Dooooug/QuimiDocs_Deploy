@@ -1,13 +1,4 @@
 {
-<<<<<<< HEAD
-  "dependencies": {
-    "axios": "^1.9.0",
-    "react-router-dom": "^7.5.3",
-    "react": "^19.1.0", 
-    "react-dom": "^19.1.0" 
-  }
-}
-=======
   "name": "quimidocs",
   "version": "0.1.0",
   "private": true,
@@ -18,12 +9,14 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.9.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-router-dom": "^7.5.3",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "CHOKIDAR_USEPOLLING=true CHOKIDAR_INTERVAL=300 WATCHPACK_POLLING=true react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -45,10 +38,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "devDependencies": {
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0"
   }
 }
->>>>>>> 591efe126e0c13eec9105a6ca828d29f8052d815

@@ -4,6 +4,7 @@ from flask import request, jsonify, Blueprint
 from flask_jwt_extended import create_access_token
 from werkzeug.security import generate_password_hash, check_password_hash
 from bson.objectid import ObjectId
+from datetime import datetime, timezone
 
 # Importa a classe User do módulo models
 from app.models import User
@@ -154,7 +155,8 @@ def register():
             "empresa": new_user.empresa,
             "setor": new_user.setor,
             "data_de_nascimento": new_user.data_de_nascimento,
-            "planta": new_user.planta
+            "planta": new_user.planta,
+            "created_at": new_user.created_at.isoformat()
         }
     }), 201
 
@@ -179,9 +181,19 @@ def login():
     # Verifica se o usuário existe e se a senha está correta
     if not user_data or not check_password_hash(user_data['password_hash'], senha):
         return jsonify({"msg": "Email ou senha inválidos"}), 401
-    
+
     # Converte o dicionário do MongoDB para um objeto User
     user = User.from_dict(user_data)
+
+
+     # Atualiza o campo last_access no banco
+    current_time = datetime.now(timezone.utc)
+    User.collection().update_one(
+        {"_id": user._id}, # ✅ CORRETO: `user._id` agora está acessível
+        {"$set": {"last_access": current_time}}
+    )
+    user.last_access = current_time
+    
 
     # Cria um token de acesso JWT com a identidade do usuário (ID do MongoDB)
     access_token = create_access_token(identity=str(user._id))
@@ -208,9 +220,8 @@ def get_users():
             "setor": user.setor,
             "data_de_nascimento": user.data_de_nascimento,
             "planta": user.planta,
-            # Adicione 'created_at' e 'last_access' se seu modelo e rota de login/registro os tiverem
-            # "created_at": user.created_at.isoformat() if user.created_at else None,
-            # "last_access": user.last_access.isoformat() if user.last_access else None,
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "last_access": user.last_access.isoformat() if user.last_access else None,
         })
     return jsonify(users_list), 200
 

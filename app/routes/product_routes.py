@@ -5,9 +5,11 @@ from bson.objectid import ObjectId
 from bson.errors import InvalidId
 from datetime import datetime, timezone
 import re
-
+import json
 from app.models import Product, User
 from app.utils import ROLES, role_required
+import boto3, uuid, os
+from datetime import datetime, timezone
 
 product_bp = Blueprint('product', __name__)
 
@@ -103,38 +105,47 @@ def create_product():
     except (InvalidId, TypeError):
         creator_user_id = str(current_user_id)
 
-    data = request.get_json()
-    if not data:
-        return jsonify({"msg": "Dados não enviados"}), 400
+    # 1️⃣ Verificação dos dados recebidos
+    if 'productData' not in request.form:
+        return jsonify({"msg": "Dados do produto (productData) não encontrados no formulário."}), 400
+    if 'file' not in request.files:
+        return jsonify({"msg": "Nenhum arquivo (file) foi enviado."}), 400
 
-    required_fields = [
-        'nome_do_produto',
-        'fornecedor',
-        'estado_fisico',
-        'local_de_armazenamento',
-        'empresa'
-    ]
+    # 2️⃣ Converte os dados do formulário JSON → Python
+    try:
+        data = json.loads(request.form['productData'])
+    except json.JSONDecodeError:
+        return jsonify({"msg": "Formato de 'productData' é inválido."}), 400
 
+    pdf_file = request.files['file']
+
+    # 3️⃣ Validação de campos obrigatórios
+    required_fields = ['nome_do_produto', 'fornecedor', 'estado_fisico', 'local_de_armazenamento', 'empresa']
     if any(field not in data or not data[field] for field in required_fields):
         return jsonify({
             "msg": "Campos obrigatórios faltando: nome_do_produto, fornecedor, estado_fisico, local_de_armazenamento e empresa."
         }), 400
 
+    # 4️⃣ Geração do código do produto (antes do upload!)
     try:
         last_product = Product.collection().find_one(sort=[('_id', -1)])
         last_code_number = 0
-
         if last_product and 'codigo' in last_product:
             match = re.search(r'FDS(\d+)', last_product['codigo'])
             if match:
                 last_code_number = int(match.group(1))
-
         new_code_number = last_code_number + 1
         new_codigo = f"FDS{new_code_number:06d}"
-
     except Exception as e:
         return jsonify({"msg": f"Erro ao gerar o código interno do produto: {str(e)}"}), 500
 
+    # 5️⃣ Upload real do PDF para o S3
+    try:
+        s3_key_from_s3, pdf_url_from_s3 = upload_to_s3(pdf_file, new_codigo)
+    except Exception as e:
+        return jsonify({"msg": f"Erro ao enviar arquivo para o S3: {str(e)}"}), 500
+
+    # 6️⃣ Montagem do novo produto com a URL real do S3
     substancias = []
     if 'substancias' in data and isinstance(data['substancias'], list):
         for s in data['substancias']:
@@ -159,24 +170,23 @@ def create_product():
         categoria=data.get('categoria'),
         status=data.get('status') or 'pendente',
         created_by_user_id=creator_user_id,
-        pdf_url=data.get('pdf_url'),
-        pdf_s3_key=data.get('pdf_s3_key'),
+        pdf_url=pdf_url_from_s3,      # ✅ URL real do S3
+        pdf_s3_key=s3_key_from_s3,    # ✅ Caminho real dentro do bucket
         empresa=data.get('empresa'),
     )
 
+    # 7️⃣ Inserção no MongoDB
     try:
         product_dict = new_product.to_dict()
         product_dict["created_at"] = datetime.now(timezone.utc)
         product_dict["updated_at"] = datetime.now(timezone.utc)
-
         result = Product.collection().insert_one(product_dict)
         new_product._id = result.inserted_id
-
         product_dict["_id"] = new_product._id
         serialized = _serialize_product(product_dict)
 
         return jsonify({
-            "msg": f"{new_codigo} e {data.get('nome_do_produto')} - produto cadastrado com sucesso",
+            "msg": f"{new_codigo} - {data.get('nome_do_produto')} cadastrado com sucesso!",
             "product": serialized,
             "id": serialized["id"]
         }), 201
@@ -361,3 +371,22 @@ def delete_product(product_id):
         return jsonify({"msg": "Produto excluído com sucesso."}), 200
     except Exception as e:
         return jsonify({"msg": f"Erro ao excluir produto: {str(e)}"}), 500
+
+
+
+def upload_to_s3(file_obj, filename_prefix):
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        region_name=os.getenv("AWS_REGION")
+    )
+
+    bucket_name = os.getenv("AWS_BUCKET_NAME")
+    unique_name = f"{filename_prefix}_{uuid.uuid4()}.pdf"
+    key = f"uploads/{unique_name}"
+
+    s3.upload_fileobj(file_obj, bucket_name, key)
+
+    url = f"https://{bucket_name}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{key}"
+    return key, url

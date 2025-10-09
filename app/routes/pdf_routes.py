@@ -19,6 +19,8 @@ from bson.errors import InvalidId
 from app.models import User, Product
 from app.utils import ROLES, role_required
 from app.security_config import limiter
+from app.routes.product_routes import product_bp
+from flask_jwt_extended import jwt_required
 
 load_dotenv()
 
@@ -52,6 +54,7 @@ for handler in logging.getLogger().handlers:
 # BLUEPRINT E CONEXÕES GLOBAIS
 # ============================================================
 pdf_bp = Blueprint("pdf", __name__)
+
 CORS(pdf_bp, resources={r"/*": {"origins": "*"}})
 
 # Variáveis globais que serão inicializadas pela função init_services
@@ -346,3 +349,54 @@ def health_check():
             "timestamp": datetime.utcnow().isoformat(),
             "error": "Service unavailable"
         }), 503
+
+@product_bp.route('/products/<product_id>/download', methods=['GET'])
+@jwt_required()  # requer JWT para segurança
+def download_fds(product_id):
+    """
+    Gera um link temporário (presigned URL) para o arquivo PDF do produto no S3.
+    Esse link permite download/visualização pública por tempo limitado.
+    """
+    try:
+        user_id = get_jwt_identity()
+        product = Product.collection().find_one({"_id": ObjectId(product_id)})
+
+        if not product:
+            return jsonify({"msg": "Produto não encontrado"}), 404
+
+        # 🔐 (opcional) validação de permissão: somente o criador ou admin acessam
+        # if product["created_by_user_id"] != ObjectId(user_id):
+        #     return jsonify({"msg": "Acesso negado"}), 403
+
+        file_key = product.get("pdf_s3_key")
+        if not file_key:
+            return jsonify({"msg": "Arquivo FDS não encontrado"}), 404
+
+        # ⚙️ 1️⃣ Verificação e inicialização do cliente S3 (evita erro de NoneType)
+        global s3_client
+        if not s3_client:
+            s3_client = get_aws_client('s3')
+            if not s3_client:
+                logging.error("Falha ao inicializar cliente AWS S3.")
+                return jsonify({"msg": "Erro interno: S3 não inicializado"}), 500
+
+        # 🧾 2️⃣ Logs úteis de debug (só aparecem no console, não expõem segredo)
+        logging.info(f"Gerando presigned URL para bucket '{s3_bucket_name}' e key '{file_key}'")
+
+        # 🔗 3️⃣ Geração do link temporário de acesso
+        presigned_url = s3_client.generate_presigned_url(
+            ClientMethod='get_object',  # método correto da API boto3
+            Params={
+                'Bucket': s3_bucket_name,
+                'Key': file_key
+            },
+            ExpiresIn=600  # ⏱️ 10 minutos (ajustável)
+        )
+
+        # 🧠 4️⃣ Retorno no padrão do frontend (downloadService.js espera download_url)
+        return jsonify({"download_url": presigned_url}), 200
+
+    except Exception as e:
+        logging.error(f"Erro ao gerar link temporário: {e}", exc_info=True)
+        return jsonify({"msg": "Erro interno ao gerar link de download"}), 500
+

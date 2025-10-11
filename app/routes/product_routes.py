@@ -1,17 +1,21 @@
 # app/routes/product_routes.py
 from flask import request, jsonify, Blueprint
-from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import get_jwt_identity, jwt_required
+import logging
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 from datetime import datetime, timezone
 import re
 import json
 from app.models import Product, User
-from app.utils import ROLES, role_required
+from app.utils import ROLES, role_required, get_aws_client
 import boto3, uuid, os
 from datetime import datetime, timezone
 
 product_bp = Blueprint('product', __name__)
+
+s3_client = None
+s3_bucket_name = os.getenv("AWS_BUCKET_NAME")
 
 # ============================================================
 # HELPERS
@@ -372,6 +376,103 @@ def delete_product(product_id):
     except Exception as e:
         return jsonify({"msg": f"Erro ao excluir produto: {str(e)}"}), 500
 
+# ==============================================================================
+# ROTA PARA GERAR LINK DE DOWNLOAD/VISUALIZAÇÃO DE FDS
+# ==============================================================================
+
+# O decorator @product_bp.route define a URL e o método HTTP para esta função.
+# A URL será /products/<product_id>/download, onde <product_id> é uma variável.
+# O decorator @jwt_required() protege a rota, exigindo que o usuário esteja autenticado com um token JWT válido.
+@product_bp.route('/products/<product_id>/download', methods=['GET'])
+@jwt_required()
+def download_fds(product_id):
+    """
+    Gera um link temporário (presigned URL) para o arquivo PDF do produto no S3.
+    Este link permite o download ou a visualização pública por um tempo limitado,
+    forçando o navegador a tentar exibir o arquivo em vez de baixá-lo.
+    """
+    # O bloco try...except captura qualquer erro inesperado que possa ocorrer,
+    # evitando que o servidor quebre e retornando uma mensagem de erro amigável.
+    try:
+        # 1. VALIDAÇÃO DO PRODUTO
+        # ========================
+        
+        # Busca a identidade do usuário (geralmente o ID) a partir do token JWT.
+        user_id = get_jwt_identity()
+
+        # Busca no banco de dados (MongoDB) o documento do produto pelo seu ID.
+        # ObjectId(product_id) converte a string da URL para o formato de ID do MongoDB.
+        product = Product.collection().find_one({"_id": ObjectId(product_id)})
+
+        # Se nenhum produto for encontrado com o ID fornecido, retorna um erro 404 (Não Encontrado).
+        if not product:
+            return jsonify({"msg": "Produto não encontrado"}), 404
+
+        # 2. VERIFICAÇÃO DO ARQUIVO PDF
+        # ==============================
+
+        # Pega o caminho (chave) do arquivo PDF armazenado no S3 a partir do documento do produto.
+        file_key = product.get("pdf_s3_key")
+
+        # Se o produto não tiver uma chave de PDF associada, significa que não há arquivo para baixar.
+        if not file_key:
+            return jsonify({"msg": "Arquivo FDS não encontrado para este produto"}), 404
+
+        # 3. INICIALIZAÇÃO DO CLIENTE S3
+        # ===============================
+        
+        # A variável s3_client é global. Verificamos se ela já foi inicializada.
+        global s3_client
+        if not s3_client:
+            # Se não foi, chama a função auxiliar para criar um novo cliente S3.
+            s3_client = get_aws_client('s3')
+            # Se a inicialização falhar (ex: credenciais erradas), loga um erro e retorna uma resposta 500.
+            if not s3_client:
+                logging.error("Falha ao inicializar o cliente AWS S3 no momento da requisição.")
+                return jsonify({"msg": "Erro interno: Serviço de armazenamento não configurado"}), 500
+
+        # 4. GERAÇÃO DO LINK TEMPORÁRIO (PRESIGNED URL)
+        # ===============================================
+
+        # Loga uma informação útil no console do servidor para depuração.
+        logging.info(f"Gerando presigned URL para bucket '{s3_bucket_name}' e chave '{file_key}'")
+
+        # Esta é a função principal que pede ao S3 para criar uma URL de acesso temporário.
+        presigned_url = s3_client.generate_presigned_url(
+            # O método 'get_object' especifica que a URL será usada para buscar (visualizar/baixar) um objeto.
+            ClientMethod='get_object',
+            # 'Params' contém os detalhes do pedido que será feito quando a URL for acessada.
+            Params={
+                'Bucket': s3_bucket_name,  # O nome do seu bucket no S3.
+                'Key': file_key,          # O caminho completo do arquivo dentro do bucket.
+                
+                # ✅ ALTERAÇÃO PRINCIPAL: Controle de como o arquivo é apresentado.
+                # 'ResponseContentDisposition': 'inline' instrui o S3 a dizer ao navegador
+                # para tentar ABRIR/EXIBIR o arquivo na própria aba, em vez de forçar o download.
+                'ResponseContentDisposition': 'inline',
+
+                # 'ResponseContentType': 'application/pdf' garante que o navegador saiba que
+                # o arquivo é um PDF, ajudando-o a usar o visualizador correto.
+                'ResponseContentType': 'application/pdf'
+            },
+            # Define o tempo de validade do link em segundos. Aqui, 600 segundos = 10 minutos.
+            ExpiresIn=600
+        )
+
+        # 5. RETORNO DA RESPOSTA
+        # =======================
+
+        # Retorna a URL gerada em um objeto JSON. O front-end espera uma chave chamada "download_url".
+        # O status 200 (OK) indica que a operação foi bem-sucedida.
+        return jsonify({"download_url": presigned_url}), 200
+
+    # Captura qualquer exceção não tratada que possa ter ocorrido.
+    except Exception as e:
+        # Loga o erro completo no console do servidor para análise posterior.
+        logging.error(f"Erro inesperado ao gerar link temporário: {e}", exc_info=True)
+        # Retorna uma mensagem de erro genérica para o usuário com status 500 (Erro Interno do Servidor).
+        return jsonify({"msg": "Erro interno ao processar a solicitação de download"}), 500
+
 
 
 def upload_to_s3(file_obj, filename_prefix):
@@ -390,3 +491,5 @@ def upload_to_s3(file_obj, filename_prefix):
 
     url = f"https://{bucket_name}.s3.{os.getenv('AWS_REGION')}.amazonaws.com/{key}"
     return key, url
+
+

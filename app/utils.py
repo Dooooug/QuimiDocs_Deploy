@@ -5,6 +5,8 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from bson.objectid import ObjectId
 import functools
 import logging
+import os
+import boto3
 
 # Importa a classe User do módulo models
 from app.models import User
@@ -66,3 +68,22 @@ def role_required(required_roles):
                 return jsonify({"msg": "Erro de autorização"}), 500
         return wrapper
     return decorator
+
+def get_aws_client(service_name):
+    """Obtém cliente AWS de forma segura"""
+    aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+    aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+    aws_region = os.getenv('AWS_REGION')
+    if not all([aws_access_key_id, aws_secret_access_key, aws_region]):
+        logging.error("Configuração AWS incompleta")
+        return None
+    try:
+        session = boto3.Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=aws_region
+        )
+        return session.client(service_name)
+    except Exception as e:
+        logging.error(f"Erro ao inicializar cliente AWS: {type(e).__name__}")
+        return None

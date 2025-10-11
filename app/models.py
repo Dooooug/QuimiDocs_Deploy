@@ -83,7 +83,7 @@ class Product:
                  estado_fisico, local_de_armazenamento, substancias,
                  palavra_de_perigo, categoria, status, created_by_user_id,
                  perigos_fisicos=None, perigos_saude=None, perigos_meio_ambiente=None,
-                 pdf_url=None, pdf_s3_key=None, empresa=None, _id=None, created_at=None):
+                 pdf_url=None, pdf_s3_key=None, empresa=None,file_hash=None, _id=None, created_at=None):
         self.codigo = codigo
         self.qtade_maxima_armazenada = qtade_maxima_armazenada
         self.nome_do_produto = nome_do_produto
@@ -101,6 +101,7 @@ class Product:
         self.pdf_url = pdf_url
         self.pdf_s3_key = pdf_s3_key
         self.empresa = empresa
+        self.file_hash = file_hash
         self._id = _id
         self.created_at = created_at if created_at is not None else datetime.now(timezone.utc)
 
@@ -123,6 +124,7 @@ class Product:
             "pdf_url": self.pdf_url,
             "pdf_s3_key": self.pdf_s3_key,
             "empresa": self.empresa,
+            "file_hash": self.file_hash,
             "created_at": self.created_at.isoformat() if isinstance(self.created_at, datetime) else self.created_at
         }
         if self._id:
@@ -156,6 +158,7 @@ class Product:
             pdf_url=data.get('pdf_url'),
             pdf_s3_key=data.get('pdf_s3_key'),
             empresa=data.get('empresa'),
+            file_hash=data.get('file_hash'),
             _id=data.get('_id'),
             created_at=created_at_data
         )

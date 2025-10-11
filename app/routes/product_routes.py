@@ -11,6 +11,8 @@ from app.models import Product, User
 from app.utils import ROLES, role_required, get_aws_client
 import boto3, uuid, os
 from datetime import datetime, timezone
+import hashlib # 👈 Adicione esta linha para calcular o hash dos arquivos
+from werkzeug.utils import secure_filename # 👈 Adicione esta linha para limpar nomes de arquivos
 
 product_bp = Blueprint('product', __name__)
 
@@ -96,10 +98,37 @@ def get_next_product_code():
     except Exception as e:
         return jsonify({"msg": f"Erro ao gerar o próximo código do produto: {str(e)}"}), 500
 
+# =============================================================================
+# ✅ PASSO 1: FUNÇÃO AUXILIAR PARA VALIDAR O NÚMERO CAS
+# Esta função contém a lógica do algoritmo de soma de verificação.
+# Colocá-la fora da rota torna o código mais limpo e reutilizável.
+# =============================================================================
+def is_valid_cas_number(cas_string: str) -> bool:
+    """
+    Valida um número CAS usando o algoritmo de soma de verificação.
+    """
+    # Verifica o formato (ex: 7732-18-5) usando expressão regular.
+    if not re.match(r'^\d{2,7}-\d{2}-\d$', cas_string):
+        return False
+
+    # Remove os hífens para o cálculo.
+    digits = cas_string.replace('-', '')
+    check_digit = int(digits[-1])
+    cas_digits_to_check = digits[:-1]
+
+    # Aplica o algoritmo: soma ponderada dos dígitos.
+    total_sum = 0
+    for i, digit in enumerate(cas_digits_to_check[::-1]): # Itera da direita para a esquerda
+        total_sum += int(digit) * (i + 1)
+    
+    # O resto da divisão por 10 deve ser igual ao dígito verificador.
+    return (total_sum % 10) == check_digit
+
 
 # ============================================================
-# CREATE PRODUCT
+# CREATE PRODUCT 
 # ============================================================
+
 @product_bp.route('/products', methods=['POST'])
 @role_required([ROLES['1'], ROLES['2']])
 def create_product():
@@ -122,7 +151,7 @@ def create_product():
         return jsonify({"msg": "Formato de 'productData' é inválido."}), 400
 
     pdf_file = request.files['file']
-
+    
     # 3️⃣ Validação de campos obrigatórios
     required_fields = ['nome_do_produto', 'fornecedor', 'estado_fisico', 'local_de_armazenamento', 'empresa']
     if any(field not in data or not data[field] for field in required_fields):
@@ -130,7 +159,33 @@ def create_product():
             "msg": "Campos obrigatórios faltando: nome_do_produto, fornecedor, estado_fisico, local_de_armazenamento e empresa."
         }), 400
 
-    # 4️⃣ Geração do código do produto (antes do upload!)
+    # =============================================================================
+    # ✅ VALIDAÇÕES DE NEGÓCIO
+    # =============================================================================
+    product_name = data.get('nome_do_produto').strip()
+    original_filename = pdf_file.filename
+    filename_without_ext, _ = os.path.splitext(original_filename)
+
+    if product_name.lower() != filename_without_ext.strip().lower():
+        return jsonify({
+            "msg": f"O nome do produto ('{product_name}') não corresponde ao nome do arquivo ('{filename_without_ext}')."
+        }), 409
+
+    if Product.collection().find_one({"nome_do_produto": {"$regex": f"^{re.escape(product_name)}$", "$options": "i"}}):
+        return jsonify({"msg": f"Já existe um produto cadastrado com o nome '{product_name}'."}), 409
+
+    try:
+        sha256_hash = hashlib.sha256()
+        for byte_block in iter(lambda: pdf_file.read(4096), b""):
+            sha256_hash.update(byte_block)
+        file_hash = sha256_hash.hexdigest()
+        pdf_file.seek(0)
+        if Product.collection().find_one({"file_hash": file_hash}):
+            return jsonify({"msg": "Este arquivo FDS já foi cadastrado para outro produto."}), 409
+    except Exception as e:
+        return jsonify({"msg": f"Erro ao processar o arquivo para verificação: {str(e)}"}), 500
+
+    # 4️⃣ Geração do código do produto
     try:
         last_product = Product.collection().find_one(sort=[('_id', -1)])
         last_code_number = 0
@@ -143,26 +198,37 @@ def create_product():
     except Exception as e:
         return jsonify({"msg": f"Erro ao gerar o código interno do produto: {str(e)}"}), 500
 
-    # 5️⃣ Upload real do PDF para o S3
+    # 5️⃣ Upload do PDF para o S3
     try:
-        s3_key_from_s3, pdf_url_from_s3 = upload_to_s3(pdf_file, new_codigo)
+        s3_key_from_s3, pdf_url_from_s3 = upload_to_s3(pdf_file, product_name)
     except Exception as e:
         return jsonify({"msg": f"Erro ao enviar arquivo para o S3: {str(e)}"}), 500
 
-    # 6️⃣ Montagem do novo produto com a URL real do S3
+    # 6️⃣ Montagem do novo produto e VALIDAÇÃO DO NÚMERO CAS
     substancias = []
     if 'substancias' in data and isinstance(data['substancias'], list):
         for s in data['substancias']:
+            cas_number = s.get('cas', '')
+            substance_name = s.get('nome', 'Nome não informado')
+
+            # Se um número CAS foi fornecido, ele DEVE ser válido.
+            if cas_number and not is_valid_cas_number(cas_number):
+                # Se for inválido, interrompe o processo e avisa o usuário.
+                return jsonify({
+                    "msg": f"O número CAS '{cas_number}' para a substância '{substance_name}' é inválido. Por favor, digite novamente."
+                }), 400
+            
+            # Se a validação passou (ou o campo estava vazio), adiciona à lista.
             substancias.append({
-                'nome': s.get('nome', ''),
-                'cas': s.get('cas', ''),
+                'nome': substance_name,
+                'cas': cas_number,
                 'concentracao': s.get('concentracao', ''),
             })
 
     new_product = Product(
         codigo=new_codigo,
         qtade_maxima_armazenada=data.get('qtade_maxima_armazenada'),
-        nome_do_produto=data.get('nome_do_produto'),
+        nome_do_produto=product_name,
         fornecedor=data.get('fornecedor'),
         estado_fisico=data.get('estado_fisico'),
         local_de_armazenamento=data.get('local_de_armazenamento'),
@@ -174,9 +240,10 @@ def create_product():
         categoria=data.get('categoria'),
         status=data.get('status') or 'pendente',
         created_by_user_id=creator_user_id,
-        pdf_url=pdf_url_from_s3,      # ✅ URL real do S3
-        pdf_s3_key=s3_key_from_s3,    # ✅ Caminho real dentro do bucket
+        pdf_url=pdf_url_from_s3,
+        pdf_s3_key=s3_key_from_s3,
         empresa=data.get('empresa'),
+        file_hash=file_hash,
     )
 
     # 7️⃣ Inserção no MongoDB
@@ -197,8 +264,6 @@ def create_product():
 
     except Exception as e:
         return jsonify({"msg": f"Erro ao criar o produto: {str(e)}"}), 500
-
-
 # ============================================================
 # LIST PRODUCTS
 # ============================================================
@@ -262,7 +327,7 @@ def get_product(product_id):
 
 
 # ============================================================
-# UPDATE PRODUCT
+# UPDATE PRODUCT (VERSÃO CORRIGIDA)
 # ============================================================
 @product_bp.route('/products/<product_id>', methods=['PUT'])
 @role_required([ROLES['1'], ROLES['2']])
@@ -274,13 +339,20 @@ def update_product(product_id):
     except Exception:
         return jsonify({"msg": "ID inválido."}), 400
 
-    data = request.get_json() or {}
+    # 1. 🔄 ALTERAÇÃO PRINCIPAL: Ler dados do formulário multipart
+    # Em vez de request.get_json(), lemos o campo 'productData' do formulário
+    # e o convertemos de uma string JSON para um dicionário Python.
+    try:
+        data = json.loads(request.form['productData'])
+    except (KeyError, json.JSONDecodeError):
+        return jsonify({"msg": "Dados do produto (productData) não encontrados ou em formato inválido."}), 400
 
     try:
         doc = Product.collection().find_one({"_id": _id})
         if not doc:
             return jsonify({"msg": "Produto não encontrado."}), 404
 
+        # ... (Sua lógica de permissão continua a mesma e está correta) ...
         user_role = User.collection().find_one({"_id": current_oid}, {"role": 1})
         role_value = user_role.get("role") if user_role else None
 
@@ -290,24 +362,36 @@ def update_product(product_id):
             if doc.get("status") == "aprovado":
                 return jsonify({"msg": "Produto aprovado não pode ser editado por analista."}), 403
 
+        # Prepara o documento de atualização com os dados recebidos do formulário
         fields_allowed = {
-            'qtade_maxima_armazenada',
-            'nome_do_produto',
-            'fornecedor',
-            'estado_fisico',
-            'local_de_armazenamento',
-            'substancias',
-            'perigos_fisicos',
-            'perigos_saude',
-            'perigos_meio_ambiente',
-            'palavra_de_perigo',
-            'categoria',
-            'pdf_url',
-            'pdf_s3_key',
-            'empresa'
+            'qtade_maxima_armazenada', 'nome_do_produto', 'fornecedor', 'estado_fisico', 
+            'local_de_armazenamento', 'substancias', 'perigos_fisicos', 'perigos_saude', 
+            'perigos_meio_ambiente', 'palavra_de_perigo', 'categoria', 'empresa'
         }
-
         update_doc = {k: v for k, v in data.items() if k in fields_allowed}
+
+        # 2. 📂 ADIÇÃO: Lógica para tratar o upload de um novo arquivo
+        # Verificamos se um novo arquivo foi enviado na requisição.
+        if 'file' in request.files:
+            pdf_file = request.files['file']
+            # Garante que o arquivo tem um nome e não está vazio
+            if pdf_file and pdf_file.filename != '':
+                # Lógica para fazer upload do novo arquivo para o S3
+                # (Você precisará deletar o antigo se a sua regra de negócio exigir)
+                # Exemplo:
+                # delete_from_s3(doc.get('pdf_s3_key')) # Deleta o antigo
+                s3_key, pdf_url = upload_to_s3(pdf_file, update_doc['nome_do_produto'])
+                
+                # Adiciona as novas URLs ao documento de atualização
+                update_doc['pdf_url'] = pdf_url
+                update_doc['pdf_s3_key'] = s3_key
+
+        # 3. ➕ ADIÇÃO: Lógica de status (se o admin estiver editando)
+        # Permite que o admin altere o status na mesma requisição de edição.
+        if role_value == ROLES['1'] and 'status' in data:
+            if data['status'] in {"aprovado", "rejeitado", "pendente"}:
+                update_doc['status'] = data['status']
+
         update_doc["updated_at"] = datetime.now(timezone.utc)
 
         Product.collection().update_one({"_id": _id}, {"$set": update_doc})
@@ -319,6 +403,8 @@ def update_product(product_id):
         }), 200
 
     except Exception as e:
+        # Adiciona logging para depuração no futuro
+        current_app.logger.error(f"Erro ao atualizar produto {_id}: {e}")
         return jsonify({"msg": f"Erro ao atualizar produto: {str(e)}"}), 500
 
 
@@ -358,7 +444,7 @@ def update_product_status(product_id):
 
 
 # ============================================================
-# DELETE PRODUCT
+# DELETE PRODUCT (VERSÃO APRIMORADA)
 # ============================================================
 @product_bp.route('/products/<product_id>', methods=['DELETE'])
 @role_required([ROLES['1']])
@@ -369,10 +455,39 @@ def delete_product(product_id):
         return jsonify({"msg": "ID do produto inválido."}), 400
 
     try:
-        result = Product.collection().delete_one({"_id": _id})
-        if result.deleted_count == 0:
+        # 1. Encontrar o produto ANTES de apagar
+        product_to_delete = Product.collection().find_one({"_id": _id})
+
+        if not product_to_delete:
             return jsonify({"msg": "Produto não encontrado."}), 404
-        return jsonify({"msg": "Produto excluído com sucesso."}), 200
+
+        # 2. Verificar se há um arquivo no S3 para apagar
+        s3_key = product_to_delete.get("pdf_s3_key")
+        if s3_key:
+            try:
+                # Inicializa o cliente S3 (pode ser global ou dentro da função)
+                s3 = boto3.client("s3")
+                bucket_name = os.getenv("AWS_BUCKET_NAME")
+                
+                # 3. Mandar o comando para apagar o objeto do S3
+                s3.delete_object(Bucket=bucket_name, Key=s3_key)
+                logging.info(f"Arquivo {s3_key} excluído do S3 com sucesso.")
+
+            except Exception as s3_error:
+                # Se der erro ao apagar do S3, logamos o erro mas continuamos
+                # para apagar do DB. Ou você pode optar por parar a operação aqui.
+                logging.error(f"Erro ao excluir arquivo {s3_key} do S3: {s3_error}")
+                # return jsonify({"msg": "Erro ao remover arquivo associado no S3."}), 500
+
+        # 4. Apagar o registro do MongoDB
+        result = Product.collection().delete_one({"_id": _id})
+        
+        # Esta verificação se torna um pouco redundante se já fizemos o find_one, mas é segura
+        if result.deleted_count == 0:
+            return jsonify({"msg": "Produto não encontrado no momento da exclusão final."}), 404
+            
+        return jsonify({"msg": "Produto e arquivo associado foram excluídos com sucesso."}), 200
+
     except Exception as e:
         return jsonify({"msg": f"Erro ao excluir produto: {str(e)}"}), 500
 
@@ -475,7 +590,7 @@ def download_fds(product_id):
 
 
 
-def upload_to_s3(file_obj, filename_prefix):
+def upload_to_s3(file_obj, product_name): # 👈 Alteramos o segundo argumento
     s3 = boto3.client(
         "s3",
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
@@ -484,8 +599,18 @@ def upload_to_s3(file_obj, filename_prefix):
     )
 
     bucket_name = os.getenv("AWS_BUCKET_NAME")
-    unique_name = f"{filename_prefix}_{uuid.uuid4()}.pdf"
-    key = f"uploads/{unique_name}"
+    
+    # ✅ NOVO: Lógica para criar um nome de arquivo seguro a partir do nome do produto
+    # Ex: "Óleo Lubrificante / XPTO" -> "oleo_lubrificante_xpto"
+    clean_name = secure_filename(product_name).replace(' ', '_').lower()
+    
+    # Adicionamos um sufixo único para evitar qualquer chance de colisão de nomes
+    unique_suffix = str(uuid.uuid4())[:8] 
+    
+    # O nome do arquivo final será algo como: "oleo_lubrificante_xpto_a1b2c3d4.pdf"
+    unique_filename = f"{clean_name}_{unique_suffix}.pdf"
+    
+    key = f"uploads/{unique_filename}"
 
     s3.upload_fileobj(file_obj, bucket_name, key)
 

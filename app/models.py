@@ -79,13 +79,14 @@ class User:
 class Product:
     collection_name = 'products'
 
-    def __init__(self, codigo, qtade_maxima_armazenada, nome_do_produto, fornecedor,
+    def __init__(self, codigo, nome_do_produto, fornecedor,
                  estado_fisico, local_de_armazenamento, substancias,
-                 palavra_de_perigo, categoria, status, created_by_user_id,
+                 palavra_de_perigo, categoria, status, created_by_user_id,quantidade_armazenada=None,unidade_embalagem=None,
                  perigos_fisicos=None, perigos_saude=None, perigos_meio_ambiente=None,
                  pdf_url=None, pdf_s3_key=None, empresa=None,file_hash=None, _id=None, created_at=None):
         self.codigo = codigo
-        self.qtade_maxima_armazenada = qtade_maxima_armazenada
+        self.quantidade_armazenada = quantidade_armazenada
+        self.unidade_embalagem = unidade_embalagem
         self.nome_do_produto = nome_do_produto
         self.fornecedor = fornecedor
         self.estado_fisico = estado_fisico
@@ -108,7 +109,8 @@ class Product:
     def to_dict(self):
         product_dict = {
             "codigo": self.codigo,
-            "qtade_maxima_armazenada": self.qtade_maxima_armazenada,
+            "quantidade_armazenada": self.quantidade_armazenada, 
+            "unidade_embalagem": self.unidade_embalagem,     
             "nome_do_produto": self.nome_do_produto,
             "fornecedor": self.fornecedor,
             "estado_fisico": self.estado_fisico,
@@ -142,7 +144,8 @@ class Product:
 
         return cls(
             codigo=data.get('codigo'),
-            qtade_maxima_armazenada=data.get('qtade_maxima_armazenada'),
+            quantidade_armazenada=data.get('quantidade_armazenada'), # Novo campo
+            unidade_embalagem=data.get('unidade_embalagem'),         # Novo campo
             nome_do_produto=data.get('nome_do_produto'),
             fornecedor=data.get('fornecedor'),
             estado_fisico=data.get('estado_fisico'),

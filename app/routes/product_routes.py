@@ -227,7 +227,8 @@ def create_product():
 
     new_product = Product(
         codigo=new_codigo,
-        qtade_maxima_armazenada=data.get('qtade_maxima_armazenada'),
+        quantidade_armazenada=data.get('quantidade_armazenada'),
+        unidade_embalagem=data.get('unidade_embalagem'),
         nome_do_produto=product_name,
         fornecedor=data.get('fornecedor'),
         estado_fisico=data.get('estado_fisico'),
@@ -284,21 +285,6 @@ def list_products():
     except Exception as e:
         return jsonify({"msg": f"Erro ao listar produtos: {str(e)}"}), 500
 
-
-# ============================================================
-# GET PRODUCT BY ID
-# ============================================================
-#COMENTADO CODIGO ANTES
-#@product_bp.route('/products/<product_id>', methods=['GET'])
-#@role_required([ROLES['ADMIN'], ROLES['ANALYST']])
-#def get_product(product_id):
-#    try:
-#        _id = ObjectId(product_id)
-#    except Exception:
-#        return jsonify({"msg": "ID do produto inválido."}), 400
-#
-
-#Adicionada validação robusta de ObjectId para prevenir NoSQL injection. codigo novo
 def is_valid_objectid(id_str):
     """Valida se uma string é um ObjectId válido"""
     try:
@@ -364,7 +350,7 @@ def update_product(product_id):
 
         # Prepara o documento de atualização com os dados recebidos do formulário
         fields_allowed = {
-            'qtade_maxima_armazenada', 'nome_do_produto', 'fornecedor', 'estado_fisico', 
+            'quantidade_armazenada','unidade_embalagem', 'nome_do_produto', 'fornecedor', 'estado_fisico', 
             'local_de_armazenamento', 'substancias', 'perigos_fisicos', 'perigos_saude', 
             'perigos_meio_ambiente', 'palavra_de_perigo', 'categoria', 'empresa'
         }

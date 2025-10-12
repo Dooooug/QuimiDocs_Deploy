@@ -1,28 +1,55 @@
-# run.py (versão completa com headers de rate limiting)
+# run.py
+# ==============================================================================
+# PONTO DE ENTRADA (ENTRYPOINT) DA APLICAÇÃO
+# ------------------------------------------------------------------------------
+# Este arquivo é responsável por criar e configurar a instância da aplicação Flask.
+# - Em produção: O Gunicorn importa este arquivo e usa a variável 'app'.
+# - Em desenvolvimento: Você executa 'python run.py' para iniciar o servidor local.
+# ==============================================================================
 
+# ---------------------------
+# IMPORTS PADRÃO E DE LIBS
+# ---------------------------
 import os
 import sys
+import time
+import logging
+from datetime import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-# Adiciona o diretório raiz do projeto ao sys.path
+# ---------------------------
+# CONFIGURAÇÃO DO PATH
+# ---------------------------
+# Garante que os módulos da aplicação sejam encontrados corretamente.
 project_root = os.path.abspath(os.path.dirname(__file__))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+# ---------------------------
+# IMPORTS DA APLICAÇÃO
+# ---------------------------
 from app import create_app
 from app.security_config import init_security, limiter
 from app.security_middleware import init_security_middleware
 
+
+# ==============================================================================
+# INICIALIZAÇÃO E CONFIGURAÇÃO DA APLICAÇÃO
+# (Esta seção é executada tanto pelo Gunicorn quanto localmente)
+# ==============================================================================
+
+# 1. CRIA A INSTÂNCIA DA APLICAÇÃO USANDO A FACTORY
+# A variável 'app' é o que o Gunicorn procura e utiliza para servir a aplicação.
 app = create_app()
 
-# ✅ Inicializar configurações de segurança
+# 2. INICIALIZA MÓDULOS DE SEGURANÇA E MIDDLEWARE
 init_security(app)
-
-# ✅ Inicializar middleware de segurança
 app = init_security_middleware(app)
 
-# ✅ Configuração de CORS
+# 3. CONFIGURAÇÃO AVANÇADA DE CORS
+# Define quais domínios (origins) podem acessar sua API e com quais regras.
+# A origem permitida é lida da variável de ambiente 'ALLOWED_ORIGINS'.
 CORS(app, resources={
     r"/*": {
         "origins": os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000').split(','),
@@ -40,155 +67,102 @@ CORS(app, resources={
     }
 })
 
-# ✅ 7. HEADERS DE RATE LIMITING NAS RESPOSTAS
+
+# 4. MIDDLEWARE PARA ADICIONAR HEADERS DE SEGURANÇA E RATE LIMITING
+# Esta função é executada após cada requisição, antes de enviar a resposta.
 @app.after_request
-def add_rate_limit_headers(response):
-    """
-    Adiciona headers de rate limiting em todas as respostas
-    Isso ajuda os clientes a entenderem os limites e quando podem fazer novas requisições
-    """
+def add_custom_headers(response):
+    """Adiciona headers de segurança e de rate limiting em todas as respostas."""
     try:
-        # Headers padrão de segurança (já existiam)
+        # Headers padrão de segurança
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['X-XSS-Protection'] = '1; mode=block'
-        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         
-        # ✅ NOVO: Headers de Rate Limiting
-        if hasattr(request, 'rate_limited'):
-            # Headers padrão do Flask-Limiter
+        # Headers de Rate Limiting (se a requisição foi limitada)
+        if hasattr(request, 'rate_limited') and request.rate_limited is not None:
             rate_limit = request.rate_limited
-            
             response.headers['X-RateLimit-Limit'] = str(rate_limit.limit)
             response.headers['X-RateLimit-Remaining'] = str(rate_limit.remaining)
             response.headers['X-RateLimit-Reset'] = str(rate_limit.reset_at)
             
-            # ✅ Headers adicionais informativos
-            response.headers['X-RateLimit-Policy'] = f"{rate_limit.limit};w=3600"
-            
-            # Calcular tempo até reset em segundos
-            reset_in = max(0, int(rate_limit.reset_at - time.time()))
-            response.headers['Retry-After'] = str(reset_in)
-            
-        else:
-            # ✅ Headers mesmo quando não está rate limited
-            # Para ajudar clientes a entenderem os limites gerais
-            response.headers['X-RateLimit-Limit'] = '200'
-            response.headers['X-RateLimit-Remaining'] = '199'  # Será atualizado dinamicamente
-            response.headers['X-RateLimit-Policy'] = '200 per day, 50 per hour'
+            # Tempo em segundos até o reset do limite
+            reset_in_seconds = max(0, int(rate_limit.reset_at - time.time()))
+            response.headers['Retry-After'] = str(reset_in_seconds)
         
-        # ✅ Header para identificar a aplicação
+        # Headers informativos da API
         response.headers['X-Application'] = 'QuimiDocs API'
         response.headers['X-API-Version'] = '1.0.0'
         
     except Exception as e:
-        # Em caso de erro, não quebrar a resposta
-        logging.error(f"Error adding rate limit headers: {str(e)}")
+        # Evita que um erro aqui quebre a aplicação. Apenas registra o log.
+        logging.error(f"Erro ao adicionar headers customizados: {str(e)}")
     
     return response
 
-# ✅ Handler global para erros de rate limiting
+
+# 5. HANDLER GLOBAL PARA ERROS DE RATE LIMITING (HTTP 429)
+# Cria uma resposta JSON padronizada quando um usuário excede o limite.
 @app.errorhandler(429)
 def ratelimit_handler(e):
-    """
-    Handler personalizado para erros de rate limiting
-    Retorna informações detalhadas sobre o limite excedido
-    """
-    # Obter informações do rate limiting
-    rate_limit_info = getattr(e, 'description', {})
-    
-    response = jsonify({
+    """Retorna uma resposta JSON detalhada para erros de rate limiting."""
+    retry_after = e.get_response().headers.get("Retry-After", 60)
+    return jsonify({
         "error": "limite_de_requisicoes_excedido",
-        "message": "Muitas requisições em um curto período de tempo.",
-        "detail": "O limite de requisições foi excedido para este recurso.",
-        "retry_after": rate_limit_info.get('retry_after', 60),
-        "limit": rate_limit_info.get('limit', '50 per hour'),
-        "documentation": "https://api.quimidocs.com/docs/rate-limiting"
-    })
-    
-    response.status_code = 429
-    
-    # ✅ Adicionar headers específicos para erro 429
-    reset_time = int(time.time() + rate_limit_info.get('retry_after', 60))
-    response.headers['X-RateLimit-Limit'] = rate_limit_info.get('limit', '50 per hour')
-    response.headers['X-RateLimit-Reset'] = str(reset_time)
-    response.headers['Retry-After'] = str(rate_limit_info.get('retry_after', 60))
-    response.headers['X-RateLimit-Scope'] = 'ip'  # ou 'user' para limites por usuário
-    
-    return response
+        "message": f"Você excedeu o limite de requisições. Tente novamente após {retry_after} segundos."
+    }), 429
 
-# ✅ Health check global com rate limiting
+
+# 6. ROTAS GLOBAIS DA APLICAÇÃO
+# Endpoints que não pertencem a um blueprint específico.
+
 @app.route('/health', methods=['GET'])
 @limiter.limit("30 per minute")
 def health_check():
-    """Endpoint de health check global da aplicação"""
-    from datetime import datetime
+    """Endpoint de 'health check' para verificar se a API está no ar e saudável."""
     return jsonify({
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "service": "quimidocs-api",
-        "version": "1.0.0",
-        "rate_limits": {
-            "daily": 200,
-            "hourly": 50,
-            "login": "5 per minute",
-            "register": "3 per hour",
-            "upload": "10 per hour"
-        }
+        "service": "quimidocs-api"
     }), 200
 
-# ✅ NOVO: Endpoint para verificar limites atuais
 @app.route('/rate-limits', methods=['GET'])
 def get_rate_limits_info():
-    """
-    Retorna informações sobre os limites de rate limiting da aplicação
-    Útil para clientes entenderem os limites antes de fazer requisições
-    """
+    """Endpoint informativo que descreve as políticas de rate limiting da API."""
     return jsonify({
-        "rate_limits": {
-            "global": {
-                "daily": "200 requests per day",
-                "hourly": "50 requests per hour"
-            },
-            "endpoints": {
-                "login": "5 requests per minute",
-                "register": "3 requests per hour",
-                "upload": "10 requests per hour",
-                "delete": "5 requests per hour",
-                "health": "30 requests per minute"
-            },
-            "policies": {
-                "scope": "IP-based with user differentiation when authenticated",
-                "storage": os.getenv('REDIS_URL', 'memory://').split('://')[0],
-                "strategy": "fixed-window"
-            },
-            "headers": {
-                "X-RateLimit-Limit": "Total limit for the time window",
-                "X-RateLimit-Remaining": "Remaining requests in current window",
-                "X-RateLimit-Reset": "Unix timestamp when limits reset",
-                "Retry-After": "Seconds to wait after rate limit exceeded"
-            }
+        "info": "Esta API utiliza políticas de rate limiting para garantir a estabilidade.",
+        "headers_de_referencia": {
+            "X-RateLimit-Limit": "O limite total de requisições por janela de tempo.",
+            "X-RateLimit-Remaining": "Quantas requisições ainda restam na janela atual.",
+            "X-RateLimit-Reset": "O momento (timestamp) em que a janela será reiniciada.",
+            "Retry-After": "Quantos segundos aguardar antes de tentar novamente (em respostas 429)."
         }
     }), 200
 
+
+# ==============================================================================
+# EXECUTOR PARA DESENVOLVIMENTO LOCAL
+# (Esta seção é ignorada pelo Gunicorn em produção)
+# ==============================================================================
+
 if __name__ == '__main__':
-    import time  # ✅ Import necessário para time.time()
-    import logging
+    # Este bloco só é executado quando você roda o comando 'python run.py'.
     
-    # Configurar logging
-    logging.basicConfig(level=logging.INFO)
+    # Configura o sistema de logging para exibir informações no terminal.
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
-    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+    # Determina se a aplicação deve rodar em modo debug com base em variáveis de ambiente.
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1']
     
+    # Uma trava de segurança para não rodar em modo debug em um ambiente de produção.
     if debug_mode and os.getenv('FLASK_ENV') == 'production':
-        print("⚠️  AVISO: Debug mode não deve ser usado em produção!")
+        logging.warning("AVISO: Tentativa de rodar em modo DEBUG em ambiente de produção. Forçando DEBUG=False.")
         debug_mode = False
     
+    # Inicia o servidor de desenvolvimento do Flask.
     app.run(
         debug=debug_mode,
         host=os.getenv('FLASK_HOST', '0.0.0.0'),
         port=int(os.getenv('FLASK_PORT', 5000)),
-        threaded=True,
-        use_reloader=debug_mode
+        use_reloader=debug_mode  # O reloader automático só funciona em modo debug.
     )

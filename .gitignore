@@ -81,3 +81,5 @@ dump/
 data/db/
 mongod.log
 >>>>>>> 591efe126e0c13eec9105a6ca828d29f8052d815
+
+.vercel

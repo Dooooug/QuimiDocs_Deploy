@@ -1,11 +1,7 @@
 {
   "version": 2,
-  "projects": [
-    {
-      "src": "quimidocs/",
-      "use": "@vercel/static-build",
-      "buildCommand": "npm run build",
-      "outputDirectory": "build"
-    }
-  ]
+  "src": "quimidocs/",
+  "use": "@vercel/static-build",
+  "buildCommand": "npm run build",
+  "outputDirectory": "build"
 }

@@ -71,7 +71,7 @@ def sanitize_input(input_str, max_length=255):
     return cleaned[:max_length].strip() if cleaned else None
 
 @user_bp.route('/register', methods=['POST'])
-@limiter.limit("2 per hour")  # Limita a 2 registros por hora por IP
+@limiter.limit("100 per hour")  # Limita a 2 registros por hora por IP
 def register():
     data = request.get_json()
     if not data:

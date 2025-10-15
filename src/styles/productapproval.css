@@ -112,3 +112,46 @@
     font-size: 0.9em;
   }
 }
+
+.pdf-actions {
+  display: flex; /* Habilita o Flexbox para alinhar os itens em linha */
+  align-items: center; /* Alinha verticalmente os itens ao centro */
+  margin-top: 10px; /* Espaço acima da seção */
+  margin-bottom: 15px; /* Espaço abaixo da seção */
+  font-size: 0.9em;
+}
+
+/* Estiliza o texto "FDS:" */
+.pdf-actions span {
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+/* Estilo principal para transformar os botões em links */
+.pdf-button {
+  /* 1. Remove a aparência de botão padrão */
+  background: none;
+  border: none;
+  padding: 0;
+
+  /* 2. Adiciona a aparência de link */
+  color: #1e90ff; /* Azul para o link */
+  text-decoration: underline; /* Adiciona o sublinhado permanente */
+  cursor: pointer; /* Mantém o cursor de "mãozinha" */
+
+  /* 3. Ajustes de fonte e espaçamento */
+  font-family: inherit; /* Garante que a fonte seja a mesma do resto do card */
+  font-size: inherit; /* Garante que o tamanho da fonte seja o mesmo */
+  margin: 0 8px; /* Espaço entre os links "Visualizar" e "Download" */
+}
+
+/* Efeito visual ao passar o mouse por cima (feedback para o usuário) */
+.pdf-button:hover {
+  color: #0056b3; /* Um tom de azul mais escuro */
+}
+
+/* Melhora a acessibilidade para navegação com teclado */
+.pdf-button:focus {
+  outline: 1px dotted #0056b3;
+  outline-offset: 2px;
+}

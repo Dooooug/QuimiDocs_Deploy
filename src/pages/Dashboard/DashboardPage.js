@@ -6,7 +6,7 @@ function DashboardPage() {
   return (
     <div className="dashboard-container"> 
       <h1>Dashboard</h1>
-      <p>Bem-vindo ao seu painel de controle!</p>
+      <p>Bem-vindo ao seu painel de Informações</p>
     </div>
   );
 }

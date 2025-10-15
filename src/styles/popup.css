@@ -1,6 +1,5 @@
 /* src/styles/popup.css */
-
-/* Overlay que escurece o fundo e centraliza o popup */
+/* Adicionado um overlay para escurecer o fundo, como um modal */
 .popup-overlay {
   position: fixed;
   top: 0;
@@ -11,23 +10,35 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9998; /* Z-index para o overlay */
+  z-index: 9998; /* Z-index abaixo do popup para o overlay */
 }
 
-/* Container do popup */
 .popup-message {
-  position: relative;
+  /* Propriedades para centralizar o popup */
+  position: relative; /* Mudado para relative para que o overlay o centre */
+  
+  /* Dimensões e preenchimento para um popup mais padrão */
+  width: auto;
+  min-width: 250px; /* Largura mínima para melhor visualização */
+  max-width: 500px; /* Largura máxima */
   padding: 20px;
-  border-radius: 10px;
-  background: rgb(1, 103, 255);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
-  z-index: 500;
-  max-width: 500px;
-  width: 90%;
-  box-sizing: border-box;
+  
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column; /* Organiza o conteúdo verticalmente */
+  align-items: center;
+  justify-content: center;
+  
+  font-size: 1rem; /* Tamanho da fonte padrão */
+  line-height: 1.5;
+  color: white;
+  z-index: 9999;
+  
+  /* Removidas as animações de slide e fadeOut */
+  animation: none;
 }
 
-/* Cores de fundo para diferentes tipos de popup */
 .popup-message.info {
   background-color: #2196f3; /* Azul */
 }
@@ -40,19 +51,101 @@
   background-color: #f44336; /* Vermelho */
 }
 
-/* Botão de fechar (X) */
+.popup-message p {
+  margin: 0 0 10px 0; /* Espaço na parte inferior do parágrafo */
+  text-align: center;
+  flex-grow: 1;
+  word-wrap: break-word; 
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
 .popup-close-button {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   background: none;
   border: none;
-  color: #333;
-  font-size: 1.5rem;
-  font-weight: bold;
+  color: white;
+  font-size: 1.5rem; /* Tamanho do 'x' maior para melhor visibilidade */
   cursor: pointer;
+  padding: 5px;
+  line-height: 1;
+  flex-shrink: 0; 
 }
 
 .popup-close-button:hover {
-  color: #f44336;
+  opacity: 0.7;
+}/* src/styles/popup.css */
+/* Adicionado um overlay para escurecer o fundo, como um modal */
+.popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9998; /* Z-index abaixo do popup para o overlay */
+}
+
+.popup-message {
+  /* Propriedades para centralizar o popup */
+  position: relative; /* Mudado para relative para que o overlay o centre */
+  
+  /* Dimensões e preenchimento para um popup mais padrão */
+  width: auto;
+  min-width: 250px; /* Largura mínima para melhor visualização */
+  max-width: 500px; /* Largura máxima */
+  padding: 20px;
+  
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column; /* Organiza o conteúdo verticalmente */
+  align-items: center;
+  justify-content: center;
+  
+  font-size: 1rem; /* Tamanho da fonte padrão */
+  line-height: 1.5;
+  color: white;
+  z-index: 9999;
+  
+  /* Removidas as animações de slide e fadeOut */
+  animation: none;
+}
+
+.popup-message.info {
+  background-color: #2196f3; /* Azul */
+}
+
+.popup-message.success {
+  background-color: #4caf50; /* Verde */
+}
+
+.popup-message.error {
+  background-color: #f44336; /* Vermelho */
+}
+
+.popup-message p {
+  margin: 0 0 10px 0; /* Espaço na parte inferior do parágrafo */
+  text-align: center;
+  flex-grow: 1;
+  word-wrap: break-word; 
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.popup-close-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem; /* Tamanho do 'x' maior para melhor visibilidade */
+  cursor: pointer;
+  padding: 5px;
+  line-height: 1;
+  flex-shrink: 0; 
+}
+
+.popup-close-button:hover {
+  opacity: 0.7;
 }

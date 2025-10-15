@@ -1,6 +1,6 @@
 // src/hooks/useAuth.js
 import { useContext } from 'react';
-import { AuthContext } from '../context/AuthContext'; // Ajuste o caminho
+import { AuthContext } from '../context/authContext'; // Ajuste o caminho
 
 // Hook personalizado para consumir o AuthContext
 const useAuth = () => {

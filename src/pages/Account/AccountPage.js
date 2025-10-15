@@ -6,7 +6,8 @@ function AccountPage() {
   return (
     <div className="account-container"> 
       <h1>Minha Conta</h1>
-      <p>Página de detalhes da sua conta.</p>
+      <p>Página de detalhes da sua Conta.</p>
+      <p>EM DESENVOLVIMENTO.</p>
     </div>
   );
 }

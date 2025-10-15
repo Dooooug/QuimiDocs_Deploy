@@ -3,7 +3,6 @@
 // Exibe lista, permite editar em modal e excluir com confirmação.
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 
 import useAuth from "../../hooks/useAuth";
 import userService from "../../services/userService";
@@ -23,7 +22,7 @@ import "../../styles/Modal.css";
  */
 const UserManagement = () => {
   const { user, token } = useAuth();
-  const navigate = useNavigate();
+ 
 
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +35,8 @@ const UserManagement = () => {
 
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+
+  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
 
   /** Busca usuários no backend */
   const fetchUsers = useCallback(async () => {
@@ -59,16 +60,19 @@ const UserManagement = () => {
     if (!user || !token) return; // espera AuthContext hidratar
     if (user.role !== ROLES.ADMIN) {
       setToast({ show: true, message: "Acesso negado.", type: "error" });
-      setTimeout(() => navigate("/app/dashboard"), 2000);
       return;
     }
     fetchUsers();
-  }, [user, token, navigate, fetchUsers]);
+  }, [user, token, fetchUsers]);
 
   /* —— Handlers ————————————————————————— */
   const openEditModal = (u) => {
     setEditingUser(u);
     setIsEditModalOpen(true);
+  };
+
+  const openRegisterModal = () => {
+    setIsRegisterModalOpen(true);
   };
 
   const openDeleteModal = (u) => {
@@ -106,7 +110,19 @@ const UserManagement = () => {
     }
   };
 
-  const goToRegister = () => navigate("/register");
+  const handleRegister = async (newUserData) => {
+    try {
+      await userService.registerUser(newUserData);
+      setToast({ show: true, message: "Usuário registrado com sucesso!", type: "success" });
+      setIsRegisterModalOpen(false); // Fecha o modal de registro
+      await fetchUsers(); // Atualiza a lista de usuários na tela
+    } catch (err) {
+      const msg = err.response?.data?.msg || "Erro ao registrar usuário.";
+      setToast({ show: true, message: msg, type: "error" });
+    }
+  };
+
+
 
   /* —— Render ————————————————————————— */
   if (loading) return <div className="user-management-container"><p>Carregando...</p></div>;
@@ -119,13 +135,15 @@ const UserManagement = () => {
 
   return (
     <div className="user-management-container">
-      <h2>Gerenciar Usuários</h2>
-      <button className="register-user-button" onClick={goToRegister}>Registrar Novo Usuário</button>
-
+      <h2>Gerenciar Usúarios</h2>
+      
+       <button className="register-user-button" onClick={openRegisterModal}>
+        Registrar Novo Usuário
+      </button>
       <table className="user-table">
         <thead>
           <tr>
-            
+            <th>Data de Criação</th>
             <th>Nome de Usuário</th>
             <th>Email</th>
             <th>Nível</th>
@@ -134,6 +152,7 @@ const UserManagement = () => {
             <th>Setor</th>
             <th>Data de Nascimento</th>
             <th>Planta</th>
+            <th>Último Acesso</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -141,7 +160,7 @@ const UserManagement = () => {
           {users.length ? (
             users.map((u) => (
               <tr key={u.id}>
-                
+                <td>{u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</td>
                 <td>{u.username}</td>
                 <td>{u.email}</td>
                 <td>{u.role}</td>
@@ -150,21 +169,32 @@ const UserManagement = () => {
                 <td>{u.setor || "—"}</td>
                 <td>{u.data_de_nascimento || "—"}</td>
                 <td>{u.planta || "—"}</td>
+                <td>{u.last_access ? new Date(u.last_access).toLocaleString() : 'Nunca'}</td>
                 <td>
                   <button className="action-button edit-button" onClick={() => openEditModal(u)}>Editar</button>
                   <button className="action-button delete-button" onClick={() => openDeleteModal(u)}>Deletar</button>
                 </td>
               </tr>
             ))
-          ) : (
-            <tr><td colSpan="10">Nenhum usuário encontrado.</td></tr>
-          )}
-        </tbody>
+        ) : (
+          <tr>
+            <td colSpan="11">Nenhum usuário encontrado.</td>
+          </tr>
+        )}
+      </tbody>
       </table>
 
       {/* —— Modais —— */}
       {isEditModalOpen && (
         <UserEditModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} user={editingUser} onSave={handleSave} />
+      )}
+      {isRegisterModalOpen && (
+        <UserEditModal
+          isOpen={isRegisterModalOpen}
+          onClose={() => setIsRegisterModalOpen(false)}
+          onSave={handleRegister}
+          // Não passamos a prop 'user', para o modal saber que está em modo de criação
+        />
       )}
       {isConfirmModalOpen && (
         <ConfirmationModal isOpen={isConfirmModalOpen} onClose={() => setIsConfirmModalOpen(false)} onConfirm={handleDelete} message={`Tem certeza que deseja excluir o usuário ${userToDelete?.username}? Essa ação é irreversível.`} />

@@ -3,7 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './PrivateRoute';
 import RoleBasedRoute from './RoleBasedRoute';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider } from '../context/authContext';
 import { ROLES } from '../utils/constants';
 
 // Importação dos componentes globais e páginas

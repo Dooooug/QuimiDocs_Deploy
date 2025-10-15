@@ -10,7 +10,8 @@ import {
   getSortedRowModel,
 } from '@tanstack/react-table';
 import productService from '../../services/productService';
-import PopupMessage from '../../components/Common/PopupMessage';
+import downloadservice from '../../services/downloadservice';
+import PopupMessage from '../../components/Common/PopupMessage'; // <-- Esta importação agora será usada
 import useAuth from '../../hooks/useAuth';
 import { ROLES } from '../../utils/constants';
 
@@ -22,15 +23,15 @@ function ProductListPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [message, setMessage] = useState('');
-  const [showMessage, setShowMessage] = useState(false);
+  const [message, setMessage] = useState(''); // <-- Esta variável agora será usada
+  const [showMessage, setShowMessage] = useState(false); // <-- Esta variável agora será usada
   const [globalFilter, setGlobalFilter] = useState('');
 
+  // ... (useEffect, handleDelete, handleEdit permanecem os mesmos) ...
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const data = await productService.getProducts();
-
         const processedProducts = (data || []).map((p) => {
           const productId = String(p.id || p._id || `temp-${Math.random().toString(36).substring(2, 9)}`);
           return {
@@ -38,7 +39,6 @@ function ProductListPage() {
             id: productId,
           };
         });
-
         const filteredApprovedProducts = processedProducts.filter((p) => p.status === 'aprovado');
         setProducts(filteredApprovedProducts);
         setLoading(false);
@@ -50,7 +50,6 @@ function ProductListPage() {
         setLoading(false);
       }
     };
-
     if (user) {
       fetchProducts();
     }
@@ -78,12 +77,13 @@ function ProductListPage() {
 
   const columns = useMemo(
     () => [
+      // ... (outras colunas)
       {
         accessorKey: 'codigo',
         header: 'Código',
         cell: (info) => info.getValue(),
       },
-      {
+           {
         accessorKey: 'nome_do_produto',
         header: 'Nome do Produto',
         cell: (info) => info.getValue(),
@@ -94,9 +94,43 @@ function ProductListPage() {
         cell: (info) => info.getValue(),
       },
       {
-        accessorKey: 'status',
-        header: 'Status',
+        accessorKey: 'empresa',
+        header: 'Empresa',
         cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: 'quantidade_armazenada',
+        header: 'Quantidade Armazenada',
+        cell: (info) => info.getValue(),
+      },
+       {
+        accessorKey: 'unidade_embalagem',
+        header: 'Embalagem',
+        cell: (info) => info.getValue(),
+      },
+        {
+        accessorKey: 'estado_fisico',
+        header: 'Estado Físico',
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: 'substancias',
+        header: 'Substâncias',
+        // A função 'cell' personaliza o que é exibido na tela.
+        cell: (info) => {
+          // 1. Pega o valor da célula, que neste caso é a lista de substâncias.
+          const substancias = info.getValue();
+
+          // 2. Se não houver substâncias ou a lista estiver vazia, não exibe nada.
+          if (!substancias || substancias.length === 0) {
+            return null; // ou você pode retornar um traço: return '-';
+          }
+
+          // 3. Mapeia a lista para pegar apenas o nome de cada substância
+          //    e junta tudo em um único texto, separado por ", ".
+          //    Exemplo de resultado: "Isopropanol, Etanol, Metanol"
+          return substancias.map(s => s.nome).join(', ');
+        },
       },
       {
         accessorKey: 'created_at',
@@ -114,16 +148,28 @@ function ProductListPage() {
       },
       {
         accessorKey: 'pdf_url',
-        header: 'FISPQ',
-        cell: (info) =>
-          info.getValue() ? (
-            <a href={info.getValue()} target="_blank" rel="noopener noreferrer">
-              Ver FISPQ
-            </a>
-          ) : (
-            'N/A'
-          ),
+        header: 'FDS',
+        cell: (info) => {
+          if (info.getValue()) {
+            const productId = info.row.original.id;
+            return (
+              <button
+                onClick={() => downloadservice.viewPdf(productId)}
+                className="table-link-button"
+              >
+                Ver FDS
+              </button>
+            );
+          }
+          return 'N/A';
+        },
       },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: (info) => info.getValue(),
+      },
+
       {
         id: 'actions',
         header: 'Ações',
@@ -149,21 +195,17 @@ function ProductListPage() {
     ],
     [user, handleEdit, handleDelete]
   );
-
+  
   const table = useReactTable({
     data: products,
     columns,
-    state: {
-      globalFilter,
-    },
+    state: { globalFilter, },
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    initialState: {
-      pagination: { pageSize: 10 },
-    },
+    initialState: { pagination: { pageSize: 10 }, },
   });
 
   if (loading) {
@@ -279,6 +321,7 @@ function ProductListPage() {
         </table>
       </div>
 
+      {/* ✅ CORREÇÃO: Adicione este bloco para usar as variáveis e o componente */}
       {showMessage && (
         <PopupMessage
           message={message}

@@ -83,7 +83,7 @@
   margin-top: 20px;
 }
 
-.register-new-user-btn {
+.register-user-button{
   background-color: #007bff; /* Azul */
   color: white;
   padding: 10px 20px;
@@ -94,7 +94,7 @@
   transition: background-color 0.3s ease;
 }
 
-.register-new-user-btn:hover {
+.register-user-button {
   background-color: #0056b3;
 }
 

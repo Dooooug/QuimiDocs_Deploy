@@ -37,24 +37,24 @@ body {
   margin-inline: auto;
 }
 
-/* 🏷️ Inputs */
+/* Títulos dos campos (Labels) */
 label {
   display: block;
   margin-bottom: 10px;
   color: #2d3436;
   font-size: 0.9em;
-  font-weight: bold;
-  
+  font-weight: normal;
 }
-input[type="text"], select {
+input[type="text"],input[type="number"], select {
   width: 100%;
-  padding: 10px 12px;
+  padding: 12px 12px;
   border: 1px solid #dfe6e9;
   border-radius: 6px;
   font-size: 0.95em;
   transition: border-color 0.3s ease;
-  gap:10px;
+  gap:1rem;
 }
+
 input[type="text"]:focus, select:focus {
   border-color: #1e90ff;
   outline: none;
@@ -230,4 +230,42 @@ button[type="submit"]:hover { background-color: #059669; }
 @media (max-width: 900px) {
   .card { grid-template-columns: 1fr; }
   .ghs-container-horizontal { flex-direction: column; }
+}
+
+/* Estilo para dividir os campos de Quantidade e Embalagem */
+.form-group-split {
+  display: flex;
+  gap: 1rem; /* Espaçamento entre os campos */
+  width: 100%;
+}
+
+.form-group-split .form-group {
+  flex: 1; /* Faz com que ambos os campos ocupem o espaço igualmente */
+  width: 100%; /* Garante que o flex funcione corretamente */
+}
+.form-group-quantity {
+  flex-grow: 0; /* Impede que este item cresça para preencher o espaço */
+  width: 30%;   /* Define uma largura menor. Você pode ajustar este valor! */
+}
+
+
+/* ============================================================================= */
+/* ✅ 3ª ALTERAÇÃO FINAL: O aviso de compatibilidade foi resolvido.                */
+/* Adicionamos a propriedade padrão `appearance: none;` para garantir que o      */
+/* código funcione em futuras versões dos navegadores sem a necessidade de       */
+/* prefixos.                                                                     */
+/* ============================================================================= */
+
+/* Remove as setas em navegadores baseados em WebKit (Chrome, Safari, Edge) */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none; /* Para navegadores WebKit mais antigos */
+  appearance: none;         /* Propriedade padrão adicionada para resolver o aviso */
+  margin: 0;                /* Garante que nenhum espaço extra seja deixado */
+}
+
+/* Remove as setas no Firefox */
+input[type=number] {
+  -moz-appearance: textfield; /* Para versões mais antigas do Firefox */
+  appearance: none;           /* Propriedade padrão adicionada para resolver o aviso */
 }

@@ -33,8 +33,6 @@ def create_app(testing: bool = False):
         print("⚠️  Aplicação iniciada em modo de TESTE.")
     else:
         # <<< MUDANÇA 1: Tornando os segredos obrigatórios em produção >>>
-        # A aplicação irá falhar ao iniciar se estas variáveis não estiverem
-        # configuradas no ambiente (ex: no painel da Render). Isso é bom!
         try:
             app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
             app.config['JWT_SECRET_KEY'] = os.environ['JWT_SECRET_KEY']
@@ -50,15 +48,19 @@ def create_app(testing: bool = False):
     JWTManager(app)
     init_security(app)
 
-    # <<< MUDANÇA 2: Configuração dinâmica do CORS >>>
-    # Agora, o CORS vai permitir requisições da URL do frontend
-    # que você configurar na variável de ambiente na Render.
+    # <<< CORREÇÃO CRÍTICA DO CORS PARA MÚLTIPLAS ORIGENS >>>
     if not testing:
-        FRONTEND_URL = os.environ.get('FRONTEND_URL')
-        if FRONTEND_URL:
-            # Permite requisições da URL do seu frontend em produção
-            CORS(app, resources={r"/*": {"origins": FRONTEND_URL}})
-            print(f"✅ CORS configurado para aceitar requisições de: {FRONTEND_URL}")
+        # Pega a string de URLs do FRONTEND_URL configurada no Render (ex: "url1,url2")
+        FRONTEND_URL_STRING = os.environ.get('FRONTEND_URL')
+        
+        if FRONTEND_URL_STRING:
+            # 1. Divide a string pela vírgula (','), transformando em uma lista.
+            # 2. .strip() remove quaisquer espaços em branco de cada URL.
+            allowed_origins = [url.strip() for url in FRONTEND_URL_STRING.split(',')]
+            
+            # 3. Passa a lista de origens para a configuração do CORS.
+            CORS(app, resources={r"/*": {"origins": allowed_origins}})
+            print(f"✅ CORS configurado para aceitar requisições de: {', '.join(allowed_origins)}")
         else:
             # Fallback para localhost se a variável não for definida (bom para debug)
             CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
@@ -95,6 +97,6 @@ def create_app(testing: bool = False):
 
     @app.route('/')
     def home():
-        return "Backend da QuimicaDocs funcionando perfeitamente!"
+        return "Backend da QuimiDocs funcionando perfeitamente!"
 
     return app

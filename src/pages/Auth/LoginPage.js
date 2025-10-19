@@ -1,93 +1,117 @@
 // src/pages/Auth/LoginPage.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth'; // Hook personalizado para usar o AuthContext
-import authService from '../../services/authService'; // Serviço para interagir com a API de autenticação
-import PopupMessage from '../../components/Common/PopupMessage'; // Componente para exibir mensagens não-bloqueantes
-import '../../styles/forms.css'; // Estilos do formulário de autenticação
+// Importação dos ícones (É necessário ter o 'react-icons' instalado)
+import { FaEye, FaEyeSlash } from 'react-icons/fa'; 
+
+// Importações de hooks, serviços e componentes
+import useAuth from '../../hooks/useAuth'; 
+import authService from '../../services/authService'; 
+import PopupMessage from '../../components/Common/PopupMessage'; 
+import '../../styles/forms.css'; // Estilos do formulário
 
 function LoginPage() {
-  const navigate = useNavigate(); // Hook para navegação programática
-  const { user, login } = useAuth(); // Obtém o estado do usuário logado e a função de login do contexto
+  const navigate = useNavigate(); 
+  const { user, login } = useAuth(); 
   
-  // ALTERADO: 'username' para 'email' para refletir o login por email no backend
+  // Estados para o formulário de login
   const [email, setEmail] = useState(''); 
-  // ALTERADO: 'password' para 'senha' para padronizar com o backend
   const [senha, setSenha] = useState(''); 
   
-  const [message, setMessage] = useState(''); // Estado para armazenar mensagens de feedback
-  const [showMessage, setShowMessage] = useState(false); // Estado para controlar a visibilidade do PopupMessage
+  // ESTADO CRÍTICO: Controla a visibilidade da senha (Inicia como false = oculto)
+  const [showPassword, setShowPassword] = useState(false); 
+  
+  // Estados para feedback e mensagens
+  const [message, setMessage] = useState(''); 
+  const [showMessage, setShowMessage] = useState(false); 
 
-  // Efeito para redirecionar o usuário para o dashboard se já estiver logado
+  // Efeito para redirecionar o usuário se já estiver logado
   useEffect(() => {
     if (user) { 
-      navigate('/app/dashboard'); // Redireciona para o dashboard se já houver um usuário logado
+      navigate('/app/dashboard'); 
     }
-  }, [user, navigate]); // Dependências do efeito: 'user' e 'navigate'
+  }, [user, navigate]); 
+  
+  // Função para alternar o estado de visualização da senha
+  const togglePasswordVisibility = () => {
+    setShowPassword(prev => !prev);
+  };
 
   // Função para lidar com o envio do formulário de login
   const handleSubmit = async (event) => {
-    event.preventDefault(); // Previne o comportamento padrão de recarregar a página
-    setMessage(''); // Limpa mensagens anteriores
-    setShowMessage(false); // Esconde qualquer mensagem de feedback anterior
+    event.preventDefault(); 
+    setMessage(''); 
+    setShowMessage(false); 
 
     try {
-      // ALTERADO: Chama o serviço de login com 'email' e 'senha'
       const data = await authService.login(email, senha); 
-      
-      // Se o login for bem-sucedido, chama a função 'login' do contexto
-      // passando o token de acesso e os dados do usuário (que incluem o ID e a role)
       login(data.access_token, data.user); 
-      // O redirecionamento para o dashboard é feito dentro da função 'login' do AuthContext
     } catch (error) {
-      console.error('Erro de login:', error); // Loga o erro completo no console para depuração
-      // Lida com diferentes tipos de erro na resposta da API, priorizando a mensagem do backend
+      console.error('Erro de login:', error); 
       const errorMessage = error.response?.data?.msg || 'Ocorreu um erro. Tente novamente mais tarde.';
-      setMessage(errorMessage); // Define a mensagem de erro a ser exibida
-      setShowMessage(true); // Exibe o PopupMessage
+      setMessage(errorMessage); 
+      setShowMessage(true); 
     }
   };
-
-
 
   return (
     <div className="form-container">
       <h1>Acesso ao QUIMIDOCS</h1>
       <form onSubmit={handleSubmit}>
-        {/* Campo de entrada para o Email */}
-        <label htmlFor="email">Email:</label> {/* Label adicionado para acessibilidade */}
-        <input 
-          type="email" // Tipo "email" para validação de formato
-          id="email" // ID para associar ao label
-          name="email" // Nome do campo
-          placeholder="Email" 
-          value={email} // Valor controlado pelo estado 'email'
-          onChange={(e) => setEmail(e.target.value)} // Atualiza o estado ao digitar
-          required // Campo obrigatório
-        />
         
-        {/* Campo de entrada para a Senha */}
-        <label htmlFor="senha">Senha:</label> {/* Label adicionado para acessibilidade */}
-        <input 
-          type="password" // Tipo "password" para ocultar a entrada
-          id="senha" // ID para associar ao label
-          name="senha" // Nome do campo
-          placeholder="Senha" 
-          value={senha} // Valor controlado pelo estado 'senha'
-          onChange={(e) => setSenha(e.target.value)} // Atualiza o estado ao digitar
-          required // Campo obrigatório
-        />
+        {/* Input Group para Email: Garante padronização com a Senha */}
+        <div className="input-group">
+            <label htmlFor="email">Email:</label> 
+            <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                placeholder="Email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                required 
+            />
+        </div>
+        
+        {/* Input Group para Senha */}
+        <div className="input-group">
+            <label htmlFor="senha">Senha:</label> 
+            
+            {/* Wrapper para o Input e o Ícone (position: relative no CSS) */}
+            <div className="password-wrapper"> 
+                <input 
+                    // TIPO CONDICIONAL: 'password' (se oculto) ou 'text' (se visível)
+                    type={showPassword ? 'text' : 'password'} 
+                    id="senha" 
+                    name="senha" 
+                    placeholder="Senha" 
+                    value={senha} 
+                    onChange={(e) => setSenha(e.target.value)} 
+                    required 
+                />
+                
+                {/* BOTÃO/ÍCONE de toggle */}
+                <button 
+                    type="button" 
+                    onClick={togglePasswordVisibility} 
+                    className="password-toggle-icon" // Classe para posicionamento e centralização
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                    {/* Renderização condicional do ícone (FaEyeSlash = Olho fechado, FaEye = Olho aberto) */}
+                    {showPassword ? <FaEye /> : <FaEyeSlash />} 
+                </button>
+            </div>
+        </div>
+        
         <button type="submit">Entrar</button>
       </form>
       
-      
-      
-      {/* Componente de mensagem pop-up não-bloqueante, visível se showMessage for true */}
+      {/* Componente de mensagem pop-up não-bloqueante */}
       {showMessage && (
         <PopupMessage 
           message={message} 
           onClose={() => setShowMessage(false)} 
-          type={message.includes('sucesso') ? 'success' : 'error'} // Define o tipo da mensagem (cor)
+          type={message.includes('sucesso') ? 'success' : 'error'} 
         />
       )}
     </div>

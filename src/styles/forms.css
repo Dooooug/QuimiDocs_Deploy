@@ -1,103 +1,147 @@
+/* src/styles/forms.css */
+
+/* ================================================= */
+/* ESTILOS GERAIS E DE ALINHAMENTO                   */
+/* ================================================= */
+
 .form-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
 }
 
 .form-container form {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
+/* NOVO ESTILO: Container para alinhar Labels e Inputs e definir largura (300px) */
+.input-group {
+    display: flex;
+    flex-direction: column;
+    width: 300px; /* Largura padrão para alinhamento */
+    margin-bottom: 15px; /* Espaço entre os grupos de input */
+}
+
+/* NOVO ESTILO: Garante que as labels estejam alinhadas à esquerda e padronizadas */
+.input-group label {
+    align-self: flex-start;
+    margin-bottom: 5px; 
+    font-weight: bold; 
+}
+
+
+/* Estilo Base para Input (Aplica-se a Email e Senha) */
 .form-container input {
-  margin: 10px 0;
-  padding: 10px;
-  width: 300px;
-  font-size: 16px;
+    margin: 0;
+    padding: 10px;
+    width: 100%; /* Preenche os 300px do .input-group */
+    font-size: 16px;
+    box-sizing: border-box; 
+    border: 1px solid #ccc; 
+    border-radius: 4px; 
 }
 
-.form-container button {
-  margin: 10px 0;
-  padding: 10px 20px;
-  font-size: 16px;
+/* ================================================= */
+/* ESTILOS PARA VISUALIZAÇÃO DE SENHA (CORRIGIDOS)   */
+/* ================================================= */
+
+/* 1. Container Wrapper (Envolvendo o Input e o Ícone) */
+.password-wrapper {
+    position: relative; /* CRÍTICO: Ponto de referência para o ícone absoluto */
+    width: 100%; 
 }
 
-.popup {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #333;
-  color: white;
-  padding: 15px;
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+/* 2. Modificação no Input de Senha */
+.password-wrapper input {
+    padding-right: 40px; /* Espaço reservado para o ícone */
 }
 
+/* 3. Estilo para o Botão/Ícone de Toggle (Centralização Estável) */
+.password-toggle-icon {
+    position: absolute; 
+    right: 10px; 
+    top: 50%; 
+    transform: translateY(-50%); /* CRÍTICO: Centraliza verticalmente de forma precisa */
+    
+    background: none; 
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 0; /* Remove margens que podem causar desalinhamento */
+    
+    /* CRÍTICO: Garante que o line-height não cause flutuações na altura da linha do wrapper */
+    line-height: 1; 
+    
+    color: #888; 
+    font-size: 1.2em; 
+    z-index: 2; 
+    outline: none; 
+}
+
+.password-toggle-icon:hover {
+    color: #333; 
+}
+
+
+/* ================================================= */
+/* ESTILOS PARA POPUP E BOTÕES                       */
+/* ================================================= */
+
+/* Estilo Base para todos os botões que não são ícones */
+.form-container button[type="submit"],
+.form-container button:not(.password-toggle-icon) {
+    padding: 10px 20px;
+    font-size: 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    border: none;
+    color: white;
+}
+
+/* Botão de Entrar (Submit) */
 button[type="submit"] {
-  
-  background-color: #1e90ff;
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1em;
-  }
-    
-  button[type="submit"]:hover {
-    
-  background-color: #1e90ff
-    
-  }
+    background-color: #1e90ff; /* Azul vibrante */
+    margin-top: 20px; 
+}
 
-  /* Estilo para o botão Entrar */
+button[type="submit"]:hover {
+    background-color: #1e90ff;
+}
+
+/* Demais Botões */
+.popup {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #333;
+    color: white;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
 button.button-entrar[type="button"] {
-  background-color: #228B22; /* Verde */
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1em;
-  margin-left: 5px; /* Adicionando um pequeno espaço entre os botões */
+    background-color: #228B22; 
+    margin-left: 5px; 
 }
 
-/* Estilo para o botão Exibir Conta */
 button.button-exibir-conta[type="button"] {
-  background-color: #FFA500; /* Laranja */
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1em;
-  margin-left: 5px;
+    background-color: #FFA500; 
+    margin-left: 5px;
 }
 
-/* Estilo para o botão Voltar */
 button.button-voltar[type="button"] {
-  background-color: #808080; /* Cinza */
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1em;
-  margin-left: 5px;
+    background-color: #808080; 
+    margin-left: 5px;
 }
 
 button.button-register-button[type="button"] {
-  background-color: #FFA500; /* Laranja */
-  color: white;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1em;
-  margin-left: 5px;
+    background-color: #FFA500; 
+    margin-left: 5px;
 }

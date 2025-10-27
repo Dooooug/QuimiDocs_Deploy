@@ -90,10 +90,12 @@ def create_app(testing: bool = False):
     from app.routes.user_routes import user_bp
     from app.routes.product_routes import product_bp
     from app.routes.pdf_routes import pdf_bp
+    from app.routes.dashboard_routes import dashboard_bp
 
     app.register_blueprint(user_bp)
     app.register_blueprint(product_bp)
     app.register_blueprint(pdf_bp)
+    app.register_blueprint(dashboard_bp)
 
     @app.route('/')
     def home():

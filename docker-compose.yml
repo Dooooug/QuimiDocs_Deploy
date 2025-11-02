@@ -34,6 +34,7 @@ services:
       FLASK_ENV: development
     env_file:
       - .env
+      
     volumes:
       - ./app:/app
     working_dir: /app
@@ -56,6 +57,7 @@ services:
       - /app/node_modules
     env_file:
       - .env
+      - ./quimidocs/.env.development
     working_dir: /app
     command: npm start
     depends_on:

@@ -1,71 +1,109 @@
 // src/pages/Dashboard/DashboardPage.js
-import React from 'react';
-// Importamos o CSS atualizado que conterá o grid
-import '../../styles/DashboardPage.css'; 
 
-/* OPCIONAL: Quando você criar seus componentes de Card e Gráfico,
-  você pode importá-los e substituir os placeholders.
-  
-  import Card from '../../components/Card'; 
-  import Chart from '../../components/Chart'; 
-*/
+import React, { useState, useEffect } from 'react';
+import '../../styles/DashboardPage.css'; 
+import dashboardService from '../../services/dashboardService';
+
+// 1. IMPORTAÇÃO DOS NOVOS COMPONENTES DE GRÁFICO (CAMINHO ATUALIZADO)
+import ProductStatusChart from '../../components/Dashboard/ProductStatusChart'; 
+import UserRoleChart from '../../components/Dashboard/UserRoleChart'; 
 
 function DashboardPage() {
-  return (
-    // Este é o container 'parent' do seu grid.
-    // A classe 'dashboard-container' antiga foi substituída por esta no CSS.
-    <div className="dashboard-grid-parent"> 
+  
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true); 
+  const [error, setError] = useState(null);
 
-      {/* Área 1: Título (Criei esta área para organizar seu H1 e P) */}
-      <div className="dashboard-title-area">
-        <h1>Dashboard</h1>
-        <p>Bem-vindo ao seu painel de Informações</p>
-      </div>
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true); 
+        setError(null);   
+        
+        const data = await dashboardService.getDashboardStats();
+        
+        setStats(data); 
 
-      {/* Área 2: Cards (div1 a div4) 
-        Aqui entrarão os 4 cards com informações do banco de dados.
-      */}
-      <div className="dashboard-item div1">
-        {/* Ex: <Card title="Total de Produtos" ... /> */}
-        <h2>Card 1 (div1)</h2>
-        <p>Info do DB</p>
-      </div>
-      <div className="dashboard-item div2">
-        <h2>Card 2 (div2)</h2>
-        <p>Info do DB</p>
-      </div>
-      <div className="dashboard-item div3">
-        <h2>Card 3 (div3)</h2>
-        <p>Info do DB</p>
-      </div>
-      <div className="dashboard-item div4">
-        <h2>Card 4 (div4)</h2>
-        <p>Info do DB</p>
-      </div>
+      } catch (err) {
+        const errorMessage = err.response?.data?.msg || err.message || 'Falha ao buscar dados';
+        setError(errorMessage); 
+      
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      {/* Área 3: Gráficos (div7 e div9)
-        
-        NOTA: No seu CSS original, 'div8' e 'div9' conflitavam.
-        Eu usei 'div7' e 'div9' que criam um layout 2x2 balanceado.
-        
-        'div7' é o seu primeiro gráfico (ocupando 2 colunas).
-      */}
-      <div className="dashboard-item dashboard-chart div7">
-        {/* Ex: <Chart type="bar" ... /> */}
-        <h2>Gráfico 1 (div7)</h2>
-      </div>
+    fetchDashboardData(); 
+  }, []); 
 
-      {/* 'div9' é o seu segundo gráfico (ocupando as outras 2 colunas).
-        Você mencionou 'div8' na descrição, mas 'div9' no CSS
-        cria o layout que acredito que você queira.
-      */}
-      <div className="dashboard-item dashboard-chart div9">
-         {/* Ex: <Chart type="pie" ... /> */}
-        <h2>Gráfico 2 (div9)</h2>
-      </div>
+  // --- Renderização Condicional (loading e error) ---
 
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="dashboard-grid-parent">
+        <div className="dashboard-title-area">
+          <h1>Dashboard</h1>
+          <p>Carregando informações...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-grid-parent">
+        <div className="dashboard-title-area">
+          <h1>Dashboard</h1>
+          <p style={{ color: 'red' }}>Erro ao carregar dados: {error}</p>
+        </div>
+      </div>
+    );
+  }
+  // ----------------------------------------------------
+
+  // Renderização Principal (SUCESSO)
+  return (
+    <div className="dashboard-grid-parent"> 
+
+      <div className="dashboard-title-area">
+        <h1>Dashboard</h1>
+        <p>Bem-vindo ao seu painel de Informações</p>
+      </div>
+
+      {/* Cards Dinâmicos (div1 a div4) ... (mantidos) */}
+      <div className="dashboard-item div1">
+        <h2>Produtos Cadastrados</h2>
+        <p className="dashboard-stat-number">{stats?.total_products || 0}</p>
+      </div>
+      <div className="dashboard-item div2">
+        <h2>Último Produto Aprovado</h2>
+        <p className="dashboard-stat-text">{stats?.last_approved_product || '-'}</p>
+      </div>
+      <div className="dashboard-item div3">
+        <h2>Usuários Cadastrados</h2>
+        <p className="dashboard-stat-number">{stats?.total_users || 0}</p>
+      </div>
+      <div className="dashboard-item div4">
+        <h2>Último Usuário Registrado</h2>
+        <p className="dashboard-stat-text">{stats?.last_registered_user || '-'}</p>
+      </div>
+
+
+      {/* Área 3: GRÁFICOS REAIS */}
+      <div className="dashboard-item dashboard-chart div7">
+        <h2>Distribuição de Produtos por Status</h2>
+        {/* Gráfico de Rosca/Pizza */}
+        <ProductStatusChart data={stats?.products_by_status || []} />
+      </div>
+
+      <div className="dashboard-item dashboard-chart div9">
+        <h2>Distribuição de Usuários por Nível</h2>
+        {/* Gráfico de Barras */}
+        <UserRoleChart data={stats?.users_by_role || []} />
+      </div>
+
+    </div>
+  );
 }
 
 export default DashboardPage;

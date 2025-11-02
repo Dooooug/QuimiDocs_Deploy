@@ -26,7 +26,7 @@
     comece *abaixo* da navbar e não fique escondido atrás dela.
     (A navbar tem aprox. 60-70px de altura).
   */
-  padding: 80px 20px 20px 20px; /* (top, right, bottom, left) */
+  padding: 20px 20px 20px 20px; /* (top, right, bottom, left) */
   
   /* Garante que o dashboard ocupe no mínimo a altura da tela */
   min-height: 100vh;

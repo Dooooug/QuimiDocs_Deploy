@@ -247,6 +247,7 @@ const ProductRegistrationPage = () => {
               <option value="Líquido">Líquido</option>
               <option value="Sólido">Sólido</option>
               <option value="Gasoso">Gasoso</option>
+              <option value="Pastoso">Pastoso</option>
             </select>
           </div>
           <div className="form-group">

@@ -1,7 +1,7 @@
-// src/components/Dashboard/UserRoleChart.js
+// src/components/Dashboard/ProductsByCompanyChart.js
 
 import React from 'react';
-// Importamos os elementos necessários para o gráfico de Barras
+// Importa elementos para o gráfico de Barras
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,7 +13,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
-// 1. Registra os elementos necessários para o gráfico de Barras
+// 1. Registra os elementos necessários
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -23,19 +23,22 @@ ChartJS.register(
   Legend
 );
 
-// Cores para o dashboard
-const BAR_COLOR = 'rgba(54, 162, 235, 0.8)'; // Azul
-const BORDER_COLOR = 'rgba(54, 162, 235, 1)';
+// Cores personalizadas (pode ser ajustado)
+const BAR_COLOR = 'rgba(255, 99, 132, 0.8)'; // Vermelho claro
+const BORDER_COLOR = 'rgba(255, 99, 132, 1)';
 
-// O componente recebe os dados da API via props
-const UserRoleChart = ({ data }) => {
-    // 2. Transforma os dados da API (formato: [{_id: "role", count: 5}])
+// Componente recebe os dados da API via props ({_id: "empresa", count: 50})
+const ProductsByCompanyChart = ({ data }) => {
+    
+    // 2. Transforma os dados da API para o formato do Chart.js
     const chartData = {
-        labels: data.map(item => item._id), // Rótulos: 'Admin', 'Analista', 'Usuário'
+        // Rótulos: ID das Empresas
+        labels: data.map(item => item._id), 
         datasets: [
             {
-                label: 'Número de Usuários',
-                data: data.map(item => item.count), // Valores: 5, 20, 50
+                label: 'Número de Produtos',
+                // Valores: Contagem de Produtos
+                data: data.map(item => item.count), 
                 backgroundColor: BAR_COLOR,
                 borderColor: BORDER_COLOR,
                 borderWidth: 1,
@@ -46,7 +49,7 @@ const UserRoleChart = ({ data }) => {
     // Opções de configuração
     const options = {
         responsive: true,
-        maintainAspectRatio: false, // Importante para se ajustar à div9
+        maintainAspectRatio: false, 
         plugins: {
             legend: {
                 position: 'top',
@@ -58,16 +61,23 @@ const UserRoleChart = ({ data }) => {
         scales: {
             y: {
                 beginAtZero: true,
-                // Garantir que os rótulos sejam números inteiros
+                // Garantir que os rótulos do eixo Y sejam números inteiros
                 ticks: {
                     precision: 0
+                }
+            },
+            x: {
+                // Ajusta o título para maior legibilidade
+                title: {
+                    display: true,
+                    text: 'Empresa'
                 }
             }
         }
     };
 
     if (!data || data.length === 0) {
-        return <p>Sem dados de cargos de usuários para exibir.</p>;
+        return <p>Sem dados de produtos por empresa para exibir.</p>;
     }
 
     return (
@@ -77,4 +87,4 @@ const UserRoleChart = ({ data }) => {
     );
 };
 
-export default UserRoleChart;
+export default ProductsByCompanyChart;

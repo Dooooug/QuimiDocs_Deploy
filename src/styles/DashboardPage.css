@@ -1,158 +1,191 @@
 /* src/styles/DashboardPage.css */
 
-/* Este é o container '.parent' do seu exemplo.
-  Ele define o layout principal do grid.
-*/
+/* ================================================================= */
+/* 🧩 LAYOUT PRINCIPAL: GRID */
+/* ================================================================= */
+
 .dashboard-grid-parent {
   display: grid;
-  
-  /* AJUSTE: Seu layout de 4 cards (div1 a div4) funciona melhor 
-    com 4 colunas (repeat(4, 1fr)) em vez de 5.
-  */
+  /* 4 Colunas iguais para o layout Desktop */
   grid-template-columns: repeat(4, 1fr);
   
-  /* Definindo as linhas:
-    1. 'auto' para o título.
-    2. 'auto' para a linha de cards.
-    3. '1fr' para a linha de gráficos (ocupa o espaço restante).
+  /* 🛑 NOVA ESTRUTURA DE LINHAS (6 LINHAS DE CONTEÚDO) 🛑
+     1. Título (auto) 
+     2. Cards (auto) -> Altura mínima para o conteúdo dos cards.
+     3. Linha Extra para div3 (auto) -> Garante que div3 tenha o dobro da altura dos cards.
+     4. Linha 1 de Gráficos (1fr) 
+     5. Linha 2 de Gráficos (1fr) 
+     6. Gráfico Final (1fr)
   */
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto auto auto 1fr 1fr 1fr;
   grid-column-gap: 20px;
   grid-row-gap: 20px;
   
-  /* !! IMPORTANTE !!
-    Sua Navbar.css usa 'position: fixed'.
-    Este padding-top (80px) é ESSENCIAL para que o grid 
-    comece *abaixo* da navbar e não fique escondido atrás dela.
-    (A navbar tem aprox. 60-70px de altura).
-  */
-  padding: 20px 20px 20px 20px; /* (top, right, bottom, left) */
-  
-  /* Garante que o dashboard ocupe no mínimo a altura da tela */
-  min-height: 100vh;
-  box-sizing: border-box; /* Faz o padding ser incluído na altura total */
-  background-color: #f0f2f5; /* Um fundo leve para o dashboard */
-}
-
-/* Estilização base para todos os itens do grid
-  (Cards e Gráficos)
-*/
-.dashboard-item {
-  background-color: #ffffff;
+  /* Margem de Segurança */
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  
+  /* Garante que o fundo cubra toda a área */
+  min-height: 100vh;
+  box-sizing: border-box;
+  /* Fundo suave para destacar os cards/gráficos */
+  background-color: #f0f2f5; 
 }
 
-/* Define uma altura mínima para os gráficos,
-  para que não fiquem achatados se estiverem vazios.
-*/
-.dashboard-chart {
-  min-height: 350px; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ================================================================= */
+/* 📐 DEFINIÇÃO DAS ÁREAS DO GRID */
+/* ================================================================= */
+
+/* Área do Título (Ocupa a largura total na Linha 1) */
+.dashboard-title-area { 
+    grid-area: 1 / 1 / 2 / 5;
+    padding-bottom: 10px; /* Espaço após o título */
 }
 
+/* --- LINHA 1 DE CONTEÚDO (Linha 2) --- */
+/* Cards 1 e 2 ficam na Linha 2 (altura 'auto') */
 
-/* --- Definição das Áreas do Grid ---
-*/
-
-/* Área do Título (Linha 1, Colunas 1 a 5) */
-.dashboard-title-area {
-  /* Começa linha 1, col 1. Termina linha 2, col 5 (span 4 colunas) */
-  grid-area: 1 / 1 / 2 / 5;
-}
-
-.dashboard-title-area h1 {
-  font-size: 2.5em;
-  color: #0f172a;
-  margin: 0 0 5px 0;
-}
-
-.dashboard-title-area p {
-  font-size: 1.1em;
-  color: #334155;
-  margin: 0;
-}
-
-
-/* LINHA DE CARDS (Linha 2) */
+/* Card 1: Total de Produtos (Ocupa 1 coluna) */
 .div1 { grid-area: 2 / 1 / 3 / 2; }
+/* Card 2: Último Produto Aprovado (Ocupa 1 coluna) */
 .div2 { grid-area: 2 / 2 / 3 / 3; }
-.div3 { grid-area: 2 / 3 / 3 / 4; }
-.div4 { grid-area: 2 / 4 / 3 / 5; }
 
-/* LINHA DE GRÁFICOS (Linha 3 em diante)
-  
-  NOTA: Usei 'div7' e 'div9' do seu CSS. 
-  'div9' (3 / 3 / 6 / 5) faz mais sentido para um layout 
-  balanceado do que 'div8' (3 / 3 / 4 / 4).
-*/
+/* 🛑 div3: NOVO GRÁFICO (Ocupa as 2 colunas restantes e SE ESTENDE POR 2 LINHAS) 🛑 */
+/* grid-area: Linha 2 (Start) / Coluna 3 / Linha 4 (End) / Coluna 5 */
+/* Ocupando as linhas 2 e 3, ele tem o dobro da altura dos cards. */
+.div3 { grid-area: 2 / 3 / 4 / 5; }
 
-/* Gráfico 1 (Esquerda) */
-.div7 { 
-  /* Começa linha 3, col 1. Termina linha 6, col 3 (span 2 colunas) */
-  grid-area: 3 / 1 / 6 / 3; 
+/* 🛑 div4: REMOVIDA (Manter o comentário como referência) 🛑 */
+
+
+/* --- LINHA 2 DE GRÁFICOS (Linha 4) --- */
+/* (Posicionamento ajustado para começar após a Linha 3 extra) */
+
+/* div7 (Status) fica na esquerda */
+.div7 { grid-area: 4 / 1 / 5 / 3; }
+/* div5 (Empresa) fica na direita */
+.div5 { grid-area: 4 / 3 / 5 / 5; }
+
+
+/* --- LINHA 3 DE GRÁFICOS (Linha 5) --- */
+
+/* div6 (Pictogramas) fica na esquerda */
+.div6 { grid-area: 5 / 1 / 6 / 3; }
+/* div8 (Estado Físico) fica na direita */
+.div8 { grid-area: 5 / 3 / 6 / 5; }
+
+
+/* --- LINHA 4 DE GRÁFICOS (Linha 6) --- */
+
+/* div10 (Classificação de Perigo) ocupa toda a largura */
+.div10 { grid-area: 6 / 1 / 7 / 5; }
+
+
+/* ================================================================= */
+/* ✨ ESTILOS GERAIS DOS ITENS (Cards e Gráficos) - Mantidos */
+/* ================================================================= */
+
+.dashboard-item {
+    background-color: #ffffff; 
+    border-radius: 12px;
+    padding: 50px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); 
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Gráfico 2 (Direita) */
-.div9 { 
-  /* Começa linha 3, col 3. Termina linha 6, col 5 (span 2 colunas) */
-  grid-area: 3 / 3 / 6 / 5; 
+.dashboard-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
 }
 
-
-/* --- 🔹 RESPONSIVIDADE 🔹 ---
-*/
-
-/* Telas Médias (Tablets)
-  Breakpoint: 900px
-  Layout: 2 colunas
-*/
-@media (max-width: 900px) {
-  .dashboard-grid-parent {
-    /* Muda para 2 colunas */
-    grid-template-columns: repeat(2, 1fr);
-    /* Define novas linhas: 1(title) + 2(cards) + 2(charts) */
-    grid-template-rows: auto auto auto 1fr 1fr; 
-  }
-
-  /* --- ÁREAS NO TABLET --- */
-  .dashboard-title-area { grid-area: 1 / 1 / 2 / 3; } /* Span 2 */
-  
-  .div1 { grid-area: 2 / 1 / 3 / 2; }
-  .div2 { grid-area: 2 / 2 / 3 / 3; }
-  .div3 { grid-area: 3 / 1 / 4 / 2; }
-  .div4 { grid-area: 3 / 2 / 4 / 3; }
-  
-  .div7 { grid-area: 4 / 1 / 5 / 3; } /* Span 2 */
-  .div9 { grid-area: 5 / 1 / 6 / 3; } /* Span 2 */
-}
-
-
-/* Telas Pequenas (Celulares)
-  Breakpoint: 768px (mesmo breakpoint da sua Navbar)
-  Layout: 1 coluna (empilhado)
-*/
-@media (max-width: 768px) {
-  .dashboard-grid-parent {
-    /* Em telas muito pequenas, abandonar o grid e usar 
-      'flex' é mais simples e robusto para empilhar tudo.
-    */
+.dashboard-chart {
     display: flex;
     flex-direction: column;
-    gap: 15px; /* Espaçamento entre os itens */
+    min-height: 0; /* Essencial para que os gráficos dentro do grid funcionem corretamente */
+}
+
+.dashboard-item h2 {
+    color: #333;
+    font-size: 1.15em;
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    font-weight: 600;
+}
+
+/* ================================================================= */
+/* 🔢 ESTILOS ESPECÍFICOS PARA CARDS DE ESTATÍSTICAS - Mantidos */
+/* ================================================================= */
+
+.dashboard-stat-number {
+    font-size: 3em; 
+    font-weight: 700;
+    color: #007bff;
+    margin-top: 0px;
+}
+
+.dashboard-stat-text {
+    font-size: 1.5em; 
+    font-weight: 500;
+    color: #555;
+    display: flex; 
+    align-items: center; 
+    height: 100%;
+    min-height: 50px; 
+}
+
+/* ================================================================= */
+/* 📱 RESPONSIVIDADE (Ajustada para o novo layout) */
+/* ================================================================= */
+
+/* Telas Médias (Tablets) */
+@media (max-width: 900px) {
+  .dashboard-grid-parent {
+    /* 2 colunas */
+    grid-template-columns: repeat(2, 1fr);
+    /* Linhas: Título + 2 Cards + NOVO GRÁFICO (div3) + 5 Gráficos restantes (8 linhas no total) */
+    grid-template-rows: auto auto auto repeat(5, 1fr); 
+  }
+
+  /* Título */
+  .dashboard-title-area { grid-area: 1 / 1 / 2 / 3; }
+
+  /* LINHA 2: Cards */
+  .div1 { grid-area: 2 / 1 / 3 / 2; }
+  .div2 { grid-area: 2 / 2 / 3 / 3; }
+  
+  /* 🛑 AJUSTE MANUAL DE ALTURA NO TABLET para simular a proporção 1:2 🛑 */
+  .div1, .div2 {
+      /* Define uma altura fixa menor para os cards */
+      height: 150px; 
+  }
+
+  /* LINHA 3: Novo Gráfico (div3) */
+  .div3 { 
+      grid-area: 3 / 1 / 4 / 3; 
+      /* Define o dobro da altura dos cards */
+      height: 300px; 
+  } 
+  
+  /* LINHAS 4 a 8: Gráficos empilhados verticalmente - SEM MUDANÇA */
+  .div7 { grid-area: 4 / 1 / 5 / 3; }
+  .div5 { grid-area: 5 / 1 / 6 / 3; }
+  .div6 { grid-area: 6 / 1 / 7 / 3; }
+  .div8 { grid-area: 7 / 1 / 8 / 3; }
+  .div10 { grid-area: 8 / 1 / 9 / 3; }
+}
+
+/* Telas Pequenas (Celulares) */
+@media (max-width: 576px) {
+    .dashboard-grid-parent {
+        /* Reverte para Flexbox para empilhamento simples */
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        padding: 70px 15px 15px 15px;
+    }
     
-    /* Padding menor para mobile e mantendo o espaço da navbar */
-    padding: 70px 15px 15px 15px;
-  }
-
-  /* Não precisamos mais das 'grid-area', pois a ordem 
-    do HTML agora dita a ordem de exibição.
-  */
-
-  .dashboard-title-area h1 {
-    font-size: 2em;
-  }
+    /* Classes de área não são mais necessárias em Flexbox, mas mantemos o estilo de fonte */
+    .dashboard-stat-number { font-size: 2em; }
+    .dashboard-stat-text { font-size: 1.2em; }
 }

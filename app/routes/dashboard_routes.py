@@ -134,15 +134,18 @@ def get_dashboard_stats():
         ]
 
         danger_classification = list(Product.collection().aggregate(danger_classification_pipeline))
+        
         # 6. GRÁFICO: Quantidade Armazenada por Empresa por Estado Físico
         storage_by_company_and_state_pipeline = [
             # 1. Pré-filtragem e Conversão (Essencial)
             {"$match": {
+                # Garante que 'empresa' e 'estado_fisico' existam
+                "empresa": {"$exists": True, "$ne": None, "$ne": ""},
+                "estado_fisico": {"$exists": True, "$ne": None, "$ne": ""},
                 "quantidade_armazenada": {"$exists": True, "$ne": None}
             }},
             {"$addFields": {
-                # Tenta converter para número, tratando strings numéricas.
-                # Se for string vazia ou falhar, usa 0 (Zero).
+                # Tenta converter para número (double). Se falhar ou for null/vazio, usa 0.
                 "quantidade_armazenada_num": {
                     "$convert": {
                         "input": "$quantidade_armazenada",
@@ -150,23 +153,29 @@ def get_dashboard_stats():
                         "onError": 0,
                         "onNull": 0
                     }
-                }
+                },
+                # ** NOVO: Normaliza o estado físico para MAIÚSCULAS para garantir agrupamento correto **
+                "estado_fisico_normalizado": {"$toUpper": "$estado_fisico"} 
             }},
+            # Remove documentos com quantidade zero APÓS a conversão.
+            {"$match": {"quantidade_armazenada_num": {"$gt": 0}}}, 
+            
             # 2. Agrupamento Principal
             {"$group": {
-                "_id": {"empresa": "$empresa", "estado": "$estado_fisico"}, 
-                "total_quantidade": {"$sum": "$quantidade_armazenada_num"} # Usa o campo convertido
+                # ** ATUALIZADO: Agrupa por empresa e pelo estado físico NORMALIZADO **
+                "_id": {"empresa": "$empresa", "estado": "$estado_fisico_normalizado"}, 
+                "total_quantidade": {"$sum": "$quantidade_armazenada_num"} 
             }},
             # 3. Ordenação
             {"$sort": {"_id.empresa": 1, "total_quantidade": -1}},
 
-            # 4. Reestruturação para o Gráfico de Barras Agrupadas (OPCIONAL, mas muito útil)
-            # Este passo agrupa todos os estados físicos sob a mesma empresa.
+            # 4. Reestruturação para o Gráfico de Barras Agrupadas
             {"$group": {
                 "_id": "$_id.empresa", 
-                "estados": {
+                "dados_por_estado": {
                     "$push": {
-                        "estado_fisico": "$_id.estado",
+                        # ** ATUALIZADO: Usa o campo normalizado para o estado físico no resultado **
+                        "estado_fisico": "$_id.estado", 
                         "quantidade": "$total_quantidade"
                     }
                 }
@@ -175,10 +184,10 @@ def get_dashboard_stats():
             {"$project": {
                 "_id": 0,
                 "empresa": "$_id",
-                "dados_por_estado": "$estados"
+                "dados_por_estado": 1
             }}
         ]
-
+                
         storage_by_company_and_state = list(Product.collection().aggregate(storage_by_company_and_state_pipeline))
 
 

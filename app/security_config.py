@@ -32,7 +32,7 @@ def get_limiter_key():
 # ✅ Agora sim: instanciamos o limiter depois que get_limiter_key existe
 limiter = Limiter(
     key_func=get_limiter_key,
-    default_limits=["200 per day", "100 per hour"],
+    default_limits=["200 per day", "1000 per hour"],
     storage_uri=os.getenv('REDIS_URL', 'memory://'),
     strategy="fixed-window"
 )

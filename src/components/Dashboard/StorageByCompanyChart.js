@@ -10,9 +10,10 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js';
+// O plugin de Data Labels foi REMOVIDO para simplificar o estilo
 import { Bar } from 'react-chartjs-2';
 
-// Registra os componentes necessários do Chart.js
+// Registra APENAS os componentes padrão necessários do Chart.js
 ChartJS.register(
     CategoryScale,
     LinearScale,
@@ -23,7 +24,6 @@ ChartJS.register(
 );
 
 // Cores fixas para os estados físicos
-// Mapeamento estrito baseado nos valores validados.
 const STATE_COLORS = {
     'LÍQUIDO': 'rgba(54, 162, 235, 0.8)', // Azul
     'SÓLIDO': 'rgba(75, 192, 192, 0.8)', // Verde/Ciano
@@ -32,35 +32,71 @@ const STATE_COLORS = {
 };
 
 // =========================================================================
-// Dados simulados e a lógica de busca interna foram REMOVIDOS.
-// O componente AGORA recebe os dados via props.
+// NOVO: DADOS SIMULADOS PARA TESTE E DESENVOLVIMENTO
+// Os valores fornecidos por você estão aqui.
 // =========================================================================
+const DADOS_SIMULADOS_PADRAO = [
+    {
+        "empresa": "EMPRESA A",
+        "dados_por_estado": [
+            { "estado_fisico": "LÍQUIDO", "quantidade": 10 },
+            { "estado_fisico": "GASOSO", "quantidade": 20 },
+            { "estado_fisico": "SÓLIDO", "quantidade": 30 },
+            { "estado_fisico": "PASTOSO", "quantidade": 35 }
+        ]
+    },
+    {
+        "empresa": "EMPRESA B",
+        "dados_por_estado": [
+            { "estado_fisico": "LÍQUIDO", "quantidade": 10 },
+            { "estado_fisico": "GASOSO", "quantidade": 20 },
+            { "estado_fisico": "SÓLIDO", "quantidade": 30 },
+            { "estado_fisico": "PASTOSO", "quantidade": 35 }
+        ]
+    },
+    {
+        "empresa": "EMPRESA C",
+        "dados_por_estado": [
+            { "estado_fisico": "LÍQUIDO", "quantidade": 10 },
+            { "estado_fisico": "GASOSO", "quantidade": 20 },
+            { "estado_fisico": "SÓLIDO", "quantidade": 30 },
+            { "estado_fisico": "PASTOSO", "quantidade": 35 }
+        ]
+    }
+];
+
 
 /**
  * Componente de Gráfico de Armazenamento por Empresa e Estado Físico.
- * * @param {Array<Object>} data - Os dados de 'storage_by_company_and_state'
- * passados pelo componente pai (DashboardPage).
+ * * @param {Array<Object>} data - Os dados de 'storage_by_company_and_state' 
+ * (agrupados por empresa e estado) passados pelo DashboardPage.
  */
 const StorageByCompanyChart = ({ data }) => { 
 
+    // ----------------------------------------------------------------------
+    // MUDANÇA PRINCIPAL: Define a fonte de dados, priorizando a prop 'data'.
+    // Se a prop estiver vazia ou não for fornecida, usa os dados simulados.
+    // ----------------------------------------------------------------------
+    const dataToProcess = (data && data.length > 0) ? data : DADOS_SIMULADOS_PADRAO;
+
+
     // Processamento de dados complexo usando useMemo para otimização
+    // O useMemo agora usa 'dataToProcess' como a fonte e dependência.
     const { chartData, options } = useMemo(() => {
         
         // Retorna um estado vazio se os dados forem nulos, vazios ou indefinidos
-        if (!data || data.length === 0) {
+        if (!dataToProcess || dataToProcess.length === 0) {
             return { chartData: null, options: {} };
         }
 
         // 1. Coleta todas as empresas únicas (Eixo X)
-        const companies = data.map(item => item.empresa); 
+        const companies = dataToProcess.map(item => item.empresa); 
 
         // 2. Coleta todos os estados físicos únicos (Datasets)
         const allStates = new Set();
-        data.forEach(companyData => {
+        dataToProcess.forEach(companyData => {
             companyData.dados_por_estado.forEach(stateData => {
-                // Normaliza para letras MAIÚSCULAS para garantir agrupamento correto.
-                // Esta normalização ainda é útil caso o backend não garanta UPPERCASE 
-                // para todos os campos 'estado_fisico'.
+                // Mantenha a normalização para MAIÚSCULAS para robustez
                 if (stateData.estado_fisico) {
                     allStates.add(stateData.estado_fisico.toUpperCase()); 
                 }
@@ -73,7 +109,7 @@ const StorageByCompanyChart = ({ data }) => {
             
             // Mapeia a quantidade desse 'state' para cada 'company' no eixo X.
             const dataForState = companies.map(companyName => {
-                const companyItem = data.find(d => d.empresa === companyName);
+                const companyItem = dataToProcess.find(d => d.empresa === companyName);
                 
                 if (companyItem && companyItem.dados_por_estado) {
                     // Normaliza o estado físico do item de dados para MAIÚSCULAS antes da comparação.
@@ -89,7 +125,6 @@ const StorageByCompanyChart = ({ data }) => {
 
             // Lógica para cor: usa a chave em UPPERCASE para buscar a cor mapeada.
             const stateKey = state || '';
-            // Se o estado não for encontrado, usa uma cor padrão neutra (cinza claro)
             const color = STATE_COLORS[stateKey] || 'rgba(220, 220, 220, 0.8)'; 
             
             // Cor da borda com opacidade 1 (sólida) para melhor contraste
@@ -110,51 +145,54 @@ const StorageByCompanyChart = ({ data }) => {
             datasets: datasets, // Datasets para cada estado
         };
 
-        // 5. Opções do gráfico (Inalterado)
+        // 5. Opções do gráfico (Com melhorias de visualização)
         const chartOptions = {
              responsive: true,
              maintainAspectRatio: false,
              plugins: {
-                 legend: { position: 'bottom' }, 
+                 // POSIÇÃO DA LEGENDA ALTERADA PARA 'top'
+                 legend: { position: 'top' }, 
+                 // TÍTULO DO GRÁFICO PRINCIPAL DESATIVADO
                  title: { 
-                     display: true,
-                     text: 'Quantidade Armazenada por Empresa e Estado Físico',
-                     font: { size: 16 }
+                     display: false,
                  },
                  tooltip: {
                      callbacks: {
                          label: function(context) {
-                             // Certifica-se que a quantidade é exibida como inteiro se for o caso
+                             // Formata a quantidade no tooltip (ex: remove decimais desnecessários)
                              const quantity = Number.isInteger(context.parsed.y) ? context.parsed.y : context.parsed.y.toFixed(2);
                              return `${context.dataset.label}: ${quantity} (unidades)`;
                          }
                      }
-                 }
+                 },
+                 // CONFIGURAÇÃO DE DATALABELS REMOVIDA
              },
              scales: {
                  x: {
-                     stacked: false, // Barras AGRUPADAS
-                     title: { display: true, text: 'Empresa' }
+                     stacked: true, // Barras Empilhadas (Mantido)
+                     title: { display: true, text: 'Empresa' },
+                     // ROTAÇÃO DE TICKS REMOVIDA
                  },
                  y: {
-                     stacked: false,
+                     stacked: true, // Barras Empilhadas (Mantido)
                      beginAtZero: true,
                      title: { display: true, text: 'Quantidade Armazenada (unidades)' },
-                     ticks: { 
-                         // Permite números inteiros ou flutuantes, mas tenta formatar para precisão 0 se possível
-                         precision: 0 
-                     } 
+                     ticks: { precision: 0 } 
                  }
              }
          };
 
         return { chartData: finalChartData, options: chartOptions };
-    }, [data]); // Dependência: A lógica roda sempre que 'data' muda
+    }, [dataToProcess]); // MUDANÇA: A dependência agora é 'dataToProcess'
 
-    if (!data || data.length === 0 || !chartData) {
+    // Mensagem de dados vazios
+    // MUDANÇA: Verifica dataToProcess
+    if (!dataToProcess || dataToProcess.length === 0 || !chartData) {
+        // Se o componente pai gerenciar o carregamento, esta mensagem aparecerá após o carregamento
         return <p>Sem dados de armazenamento por empresa e estado físico.</p>;
     }
 
+    // A altura deve ser gerenciada pelo componente pai ou pelo style externo
     return (
         <div style={{ height: '100%', width: '100%' }}>
             <Bar data={chartData} options={options} />

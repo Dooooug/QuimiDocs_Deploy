@@ -103,11 +103,10 @@ function DashboardPage() {
                 <p className="dashboard-stat-text">{stats?.last_approved_product || '-'}</p>
             </div>
             
-            {/* NOVO GRÁFICO (div3): Quantidade Armazenada por Empresa por Estado Físico */}
-            {/* Este novo gráfico ocupa o espaço ao lado dos dois cards na mesma linha */}
+            {/* Gráfico 6 (movido): Classificação de Perigo (div10) */}
             <div className="dashboard-item dashboard-chart div3">
-                <h2>Quantidade Armazenada por Empresa por Estado Físico</h2>
-                <StorageByCompanyChart data={stats?.storage_by_company_and_state || []} />
+                <h2>Classificação por Tipo de Perigo</h2>
+                <DangerClassificationChart data={stats?.danger_classification || []} />
             </div>
 
                       
@@ -138,13 +137,14 @@ function DashboardPage() {
                 <PhysicalStateChart data={stats?.products_by_physical_state || []} />
             </div>
             
-            
-                      
-            {/* Gráfico 6 (movido): Classificação de Perigo (div10) */}
+            {/* NOVO GRÁFICO (div3): Quantidade Armazenada por Empresa por Estado Físico */}
+            {/* Este novo gráfico ocupa o espaço ao lado dos dois cards na mesma linha */}
             <div className="dashboard-item dashboard-chart div10">
-                <h2>Classificação por Tipo de Perigo</h2>
-                <DangerClassificationChart data={stats?.danger_classification || []} />
+                <h2>Quantidade Armazenada por Empresa por Estado Físico</h2>
+                <StorageByCompanyChart data={stats?.storage_by_company_and_state || []} />
             </div>
+                      
+            
 
         </div>
     );
